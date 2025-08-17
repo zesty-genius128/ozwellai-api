@@ -3,79 +3,18 @@
 **ALWAYS follow these instructions first and fallback to additional search and context gathering only if the information in the instructions is incomplete or found to be in error.**
 
 ## Repository Overview
-
-The Ozwell Public API Specification is an API specification repository that defines OpenAI-compatible endpoints using Zod type definitions. This repository is currently in early development phase with planned structure documented but not yet implemented.
+This public repository for Ozwell API is the canonical reference for the API, enabling both internal and external teams to build against a stable, well-documented contract.
+The Ozwell API specification project is an open and reliable source of truth for all Ozwell API interactions. All types and endpoints are defined using [Zod](https://github.com/colinhacks/zod), ensuring type safety, clarity, and consistency. 
 
 ## Working Effectively
-
-### Current Repository State
-- **IMPORTANT**: This repository is in early specification/planning phase
-- Only basic files exist: README.md, LICENSE, .gitignore, and this instruction file
-- Planned directory structure exists in README.md but directories are not created yet
-- No build system, dependencies, or runnable code exists currently
-
-### Essential Commands (Validated)
-Navigate and explore the repository:
-```bash
-cd /home/runner/work/ozwellai-api/ozwellai-api
-ls -la
-cat README.md
-find . -name "*.md" -type f
-grep -r "TODO\|HACK\|FIXME" . || true
-```
-
-View repository structure and documentation:
-```bash
-cat README.md | head -20  # View project overview
-cat LICENSE  # View Apache 2.0 license
-cat .gitignore  # View ignored file patterns
-```
-
-## Planned Directory Structure (from README.md)
-
-The repository will eventually contain:
-```
-/spec                # Zod type definitions and endpoint specs (the core API contract)
-/reference-server    # Fastify server stub for reference/testing  
-/clients
-  /typescript        # TypeScript client implementation
-  /python            # Python client implementation
-/docs                # Generated OpenAPI/Swagger docs and usage guides
-/scripts             # Utility scripts (e.g., for codegen, validation)
-/tests               # Shared test cases and fixtures
-README.md
-CONTRIBUTING.md
-LICENSE
-```
-
-## Development Phases
-
-### Phase 1: Core Specification (Current Phase)
-- Define all base types using Zod
-- Implement endpoint definitions (call-for-call with OpenAI)
-- Add IndexedCP upload endpoints for reliable file delivery
-- Add conversation management/sharing endpoints
-
-### Phase 2: Documentation
-- Set up OpenAPI generation from Zod
-- Integrate Swagger UI for interactive docs  
-- Write usage examples for each endpoint
-
-### Phase 3: Client Implementations
-- TypeScript client: auto-generate types and API calls from spec
-- Python client: mirror TypeScript client functionality
-
-### Phase 4: Reference Implementation
-- Add Fastify server stub that returns hard-coded responses for all endpoints
-- Document how to use the server stub for local testing and integration
+Make sure your code fits within the Planned Directory Structure (from README.md)
 
 ## Working with Specifications
 
 ### When Creating Zod Definitions
-- Create the `/spec` directory first: `mkdir -p spec`
+- Update the `/spec` directory first.
 - Use TypeScript files with `.ts` extension
 - Follow Zod best practices for type definitions
-- Ensure OpenAI API compatibility for standard endpoints
 - Document any Ozwell-specific extensions clearly
 
 ### When Adding New Endpoints
@@ -144,71 +83,5 @@ grep -r "TODO\|HACK\|FIXME" . || true
 # View project overview
 cat README.md | head -20
 ```
-
-### Directory Structure Setup (When Needed)
-```bash
-# Create planned directory structure
-mkdir -p spec reference-server clients/typescript clients/python docs scripts tests
-
-# Verify structure
-ls -la
-```
-
-### File Content Reference
-Output from `ls -la` in repository root:
-```
-total 40
-drwxr-xr-x 4 runner docker  4096 Aug 17 19:56 .
-drwxr-xr-x 3 runner docker  4096 Aug 17 19:54 ..
-drwxr-xr-x 7 runner docker  4096 Aug 17 19:56 .git
-drwxr-xr-x 2 runner docker  4096 Aug 17 19:56 .github
--rw-r--r-- 1 runner docker  2152 Aug 17 19:54 .gitignore
--rw-r--r-- 1 runner docker 11357 Aug 17 19:54 LICENSE
--rw-r--r-- 1 runner docker  4631 Aug 17 19:54 README.md
-```
-
-## Project Characteristics
-
-### Technology Stack (Planned)
-- **Type System**: Zod for runtime type validation and TypeScript integration
-- **API Documentation**: OpenAPI/Swagger generated from Zod definitions
-- **Reference Server**: Fastify for lightweight, fast API stub
-- **Client Libraries**: TypeScript (primary), Python (secondary)
-- **Build System**: Node.js/npm ecosystem
-- **Compatibility**: OpenAI API call-for-call compatibility
-
-### Development Principles
-- **Single Source of Truth**: Zod definitions drive everything
-- **OpenAPI Generation**: Documentation auto-generated from types
-- **Implementation Agnostic**: Specification independent of implementation
-- **Community Driven**: Open, transparent development process
-- **Extensible**: Support for enhanced features beyond OpenAI compatibility
-
-### API Extensions Beyond OpenAI
-- IndexedCP upload endpoints for reliable file delivery
-- Conversation management and sharing endpoints  
-- Multi-user contribution support for shared conversations
-- Enhanced authentication methods (planned)
-- Advanced conversation analytics (planned)
-
-## Next Development Steps
-
-Based on the README.md To-Do list, the immediate priorities are:
-
-1. **Core Specification Phase**:
-   - Define base types using Zod
-   - Implement OpenAI-compatible endpoint definitions
-   - Add IndexedCP upload endpoints
-   - Add conversation management endpoints
-
-2. **Setup Development Environment**:
-   - Create `package.json` with TypeScript and Zod dependencies
-   - Set up TypeScript configuration
-   - Configure build and validation scripts
-
-3. **Documentation Setup**:
-   - Set up OpenAPI generation from Zod
-   - Configure Swagger UI integration
-   - Create usage examples
 
 Always reference README.md for the most current project status and priorities.
