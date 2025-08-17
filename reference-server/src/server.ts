@@ -171,11 +171,12 @@ if (require.main === module) {
       const server = await buildServer();
       const port = parseInt(process.env.PORT || '3000', 10);
       const host = process.env.HOST || '0.0.0.0';
+      const displayHost = host === '0.0.0.0' ? 'localhost' : host;
       
       await server.listen({ port, host });
-      console.log(`🚀 OzwellAI Reference Server running at http://${host}:${port}`);
-      console.log(`📖 API Documentation available at http://${host}:${port}/docs`);
-      console.log(`🔧 OpenAPI spec available at http://${host}:${port}/openapi.json`);
+      console.log(`🚀 OzwellAI Reference Server running at http://${displayHost}:${port}`);
+      console.log(`📖 API Documentation available at http://${displayHost}:${port}/docs`);
+      console.log(`🔧 OpenAPI spec available at http://${displayHost}:${port}/openapi.json`);
     } catch (err) {
       console.error('Error starting server:', err);
       process.exit(1);
