@@ -2,7 +2,8 @@
 
 ## Philosophy
 
-The Ozwell API specification is an open, community-driven, and reliable source of truth for all Ozwell API interactions. All types and endpoints are defined using [Zod](https://github.com/colinhacks/zod?utm_source=bluehive&utm_medium=chat&utm_campaign=bluehive-ai), ensuring type safety, clarity, and consistency. This public repository is the canonical reference for the API, enabling both internal and external teams to build against a stable, well-documented contract.
+This public repository for Ozwell API is the canonical reference for the API, enabling both internal and external teams to build against a stable, well-documented contract.
+The Ozwell API specification project is an open and reliable source of truth for all Ozwell API interactions. All types and endpoints are defined using [Zod](https://github.com/colinhacks/zod), ensuring type safety, clarity, and consistency. 
 
 **Key principles:**
 - **Single Source of Truth:** The Zod-based spec is the definitive reference for all Ozwell API interactions.
