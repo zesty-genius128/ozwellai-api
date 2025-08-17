@@ -8,6 +8,8 @@ The Ozwell API specification project is an open and reliable source of truth for
 
 ## Working Effectively
 Make sure your code fits within the Planned Directory Structure (from README.md)
+Use a single TypeScript codebase with ESM-first design, build outputs for both ESM and CJS along with type definitions, publish to npm for Node users, and also publish to JSR to provide first-class DX for Deno, while ensuring compatibility by testing across Node and Deno in CI.
+
 
 ## Working with Specifications
 
