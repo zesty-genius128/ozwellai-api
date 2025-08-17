@@ -1,0 +1,30 @@
+{
+  "name": "@ozwell/api-spec",
+  "version": "1.0.0",
+  "description": "Ozwell API specification using Zod schemas",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "ozwell",
+    "api",
+    "specification",
+    "zod",
+    "typescript"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*"
+  ]
+}

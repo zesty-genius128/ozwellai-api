@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { EmbeddingRequestSchema, EmbeddingResponseSchema } from '../schemas';
+import { EmbeddingRequestSchema, EmbeddingResponseSchema } from '../../../spec';
 import { validateAuth, createError, generateEmbedding, countTokens } from '../util';
 
 const embeddingsRoute: FastifyPluginAsync = async (fastify) => {

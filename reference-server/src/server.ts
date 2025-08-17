@@ -12,7 +12,7 @@ import embeddingsRoute from './routes/embeddings';
 import filesRoute from './routes/files';
 
 // Import schemas for OpenAPI generation
-import * as schemas from './schemas';
+import * as schemas from '../../spec';
 
 const fastify = Fastify({
   logger: process.env.NODE_ENV !== 'production',

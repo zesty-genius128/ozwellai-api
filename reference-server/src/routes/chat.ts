@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { ChatCompletionRequestSchema, ChatCompletionResponseSchema, ChatCompletionChunkSchema } from '../schemas';
+import { ChatCompletionRequestSchema, ChatCompletionResponseSchema, ChatCompletionChunkSchema } from '../../../spec';
 import { validateAuth, createError, SimpleTextGenerator, generateId, countTokens } from '../util';
 
 const chatRoute: FastifyPluginAsync = async (fastify) => {
