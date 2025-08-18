@@ -7,7 +7,12 @@
     "dev": "ts-node src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "spec": "node scripts/write-spec.js"
+    "spec": "node scripts/write-spec.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "test": "node --test test/**/*.test.js",
+    "test:watch": "node --test --watch test/**/*.test.js",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@fastify/cors": "^8.4.2",
@@ -23,6 +28,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.3"
   },

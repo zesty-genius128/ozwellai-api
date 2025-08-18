@@ -8,6 +8,8 @@ An OpenAI-compatible Fastify server that provides a reference implementation of 
 - **Real Text Inference**: Uses deterministic text generation for predictable testing
 - **Streaming Support**: Server-Sent Events (SSE) for both `/v1/responses` and `/v1/chat/completions`
 - **File Management**: Complete file upload, download, and management system
+- **Docker Support**: Multi-architecture Docker images with security best practices
+- **CI/CD Ready**: Automated testing and publishing workflows
 - **Swagger Documentation**: Interactive API docs at `/docs`
 - **TypeScript**: Fully typed with Zod schema validation
 - **No Database**: All data stored in JSON files under `/data`

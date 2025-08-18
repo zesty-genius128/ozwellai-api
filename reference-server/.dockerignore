@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Build outputs (will be copied from builder stage)
+dist/
+
+# Development files
+src/
+*.ts
+tsconfig*.json
+.eslintrc.js
+
+# Test files
+test/
+coverage/
+
+# Documentation
+*.md
+docs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env*
+!.env.example
+
+# Temporary files
+tmp/
+temp/
