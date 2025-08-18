@@ -177,5 +177,6 @@ export type Response = z.infer<typeof ResponseSchema>;
 export type EmbeddingRequest = z.infer<typeof EmbeddingRequestSchema>;
 export type EmbeddingResponse = z.infer<typeof EmbeddingResponseSchema>;
 export type FileObject = z.infer<typeof FileObjectSchema>;
+export type FileListResponse = z.infer<typeof FileListResponseSchema>;
 export type ModelsListResponse = z.infer<typeof ModelsListResponseSchema>;
 export type ChatCompletionChunk = z.infer<typeof ChatCompletionChunkSchema>;
