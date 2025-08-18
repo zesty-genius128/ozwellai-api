@@ -2,6 +2,32 @@
 
 This document explains how to release new versions of the OzwellAI TypeScript client.
 
+## TL;DR
+
+**Quick Release:**
+```bash
+# 1. Test locally first
+./scripts/test-local.sh
+
+# 2. Create and push tag
+git tag v1.0.0 && git push origin v1.0.0
+
+# 3. Create GitHub release (triggers automatic publishing)
+```
+
+**Manual Publishing:**
+```bash
+./scripts/publish-client.sh 1.0.0
+```
+
+**Debug Issues:**
+```bash
+# Test individual steps
+./scripts/extract-version.sh v1.0.0
+./scripts/build-client.sh
+DRY_RUN=true ./scripts/publish-client.sh 1.0.0
+```
+
 ## Overview
 
 The TypeScript client uses a tag-based release process with automatic publishing to both npm and JSR. This provides:
@@ -45,13 +71,46 @@ git push origin v1.0.0
 
 Once the release is published, GitHub Actions will automatically:
 
-1. **Extract version** from the git tag
-2. **Validate** that the tag is a proper semantic version
-3. **Update package.json** with the new version
-4. **Build** the client in all formats (ESM, CJS, types)
-5. **Publish to npm** as `ozwellai`
-6. **Update jsr.json** with the new version
-7. **Publish to JSR** as `@mieweb/ozwellai`
+1. **Extract version** using `./scripts/extract-version.sh`
+2. **Validate** semantic version format
+3. **Build and publish** using `./scripts/publish-client.sh`
+   - Updates package.json and jsr.json versions
+   - Builds client in all formats (ESM, CJS, types)
+   - Publishes to npm as `ozwellai`
+   - Publishes to JSR as `@mieweb/ozwellai`
+
+## Local Testing
+
+You can test the entire release process locally before creating a release:
+
+### Quick Test
+```bash
+# Test the complete build and publish process (dry run)
+./scripts/test-local.sh
+```
+
+### Individual Steps
+```bash
+# Test version extraction
+./scripts/extract-version.sh v1.0.0
+
+# Test building the client
+./scripts/build-client.sh
+
+# Test publish process (dry run - won't actually publish)
+DRY_RUN=true ./scripts/publish-client.sh 1.0.0
+```
+
+### Manual Publishing
+If you need to publish manually (not recommended for releases):
+
+```bash
+# Authenticate with npm
+npm login
+
+# Build and publish
+./scripts/publish-client.sh 1.2.3
+```
 
 ### 5. Verify Publication
 
@@ -76,15 +135,32 @@ When creating the GitHub release, check the "Set as a pre-release" option.
 ### Invalid Version Tag
 
 If the workflow fails with "Tag is not a valid semantic version":
+- Test locally first: `./scripts/extract-version.sh your-tag`
 - Ensure your tag follows semantic versioning (e.g., `v1.0.0`, not `version-1.0`)
 - Check that there are no extra characters or spaces
+
+### Build Failures
+
+If the build fails:
+- Test locally: `./scripts/build-client.sh`
+- Check TypeScript compilation errors
+- Verify all tests pass: `cd clients/typescript && npm test`
 
 ### Publish Failures
 
 If publishing fails:
-- Check that the `NPM_TOKEN` secret is configured
+- Test locally: `DRY_RUN=true ./scripts/publish-client.sh 1.0.0`
+- Check that the `NPM_TOKEN` secret is configured in GitHub
 - Verify the package name isn't already taken
 - Ensure JSR permissions are properly set
+
+### Local Development Issues
+
+If local scripts fail:
+- Ensure dependencies are installed: `cd clients/typescript && npm install`
+- Check Node.js version: `node --version` (requires >=18.0.0)
+- Verify script permissions: `chmod +x scripts/*.sh`
+- For JSR publishing: JSR CLI is included in devDependencies, or install globally: `npm install -g jsr`
 
 ### Version Conflicts
 
@@ -101,5 +177,12 @@ For detailed information about our CI/CD architecture, including workflow relati
 - **CI workflows** run on every push/PR for fast feedback
 - **Publish workflows** run only on GitHub releases for controlled publishing  
 - **Reusable test workflows** ensure consistency across all pipelines
+- **Script-first approach** allows local testing before pushing changes
+
+**Key Scripts:**
+- `./scripts/test-local.sh` - Test complete release process locally
+- `./scripts/build-client.sh` - Build TypeScript client
+- `./scripts/publish-client.sh` - Publish to npm and JSR
+- `./scripts/extract-version.sh` - Extract and validate version from tags
 
 This separation ensures code quality on every change while giving you control over when new versions are released to users.
