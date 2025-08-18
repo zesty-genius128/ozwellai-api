@@ -23,6 +23,66 @@ Use a single TypeScript codebase with ESM-first design, build outputs for both E
 - Add descriptive comments and emojis for clarity
 - Reference `.github/ARCHITECTURE.md` as an example of preferred Mermaid diagram style
 
+### Documentation Standards
+- Keep documentation DRY (Don't Repeat Yourself) - reference other docs instead of duplicating
+- Use clear cross-references between related documentation files
+- Update the main architecture document when workflow structure changes
+
+## Working with GitHub Actions Workflows
+
+### Development Philosophy
+- **Script-first approach**: All workflows should call scripts that can be run locally
+- **Local development parity**: Developers should be able to run the exact same commands locally as CI runs
+- **Simple workflows**: GitHub Actions should be thin wrappers around scripts, not contain complex logic
+- **Easy debugging**: When CI fails, developers can reproduce the issue locally by running the same script
+
+### Script-Based Workflow Pattern
+Instead of putting logic in YAML files, create scripts that workflows call:
+
+```bash
+# Local development - run the same commands as CI
+./scripts/lint.sh
+./scripts/build.sh  
+./scripts/test.sh
+
+# CI just calls the same scripts
+# In GitHub Actions: run: ./scripts/test.sh
+```
+
+### Workflow Development Best Practices
+- **Create executable scripts** in `/scripts/` directory for all CI operations
+- **Make scripts cross-platform** (use Node.js scripts or bash with compatibility considerations)
+- **Test scripts locally first** before creating workflows that call them
+- **Keep workflows simple**: Just environment setup + script execution
+- **Use consistent script naming**: `lint.sh`, `build.sh`, `test.sh`, `publish.sh`
+
+### Local Testing Strategy
+Prefer running scripts directly over using `act`:
+
+```bash
+# Instead of: act -W .github/workflows/typescript-client-ci.yml
+# Do this: 
+cd clients/typescript
+../../scripts/lint.sh
+../../scripts/build.sh
+../../scripts/test.sh
+```
+
+### Script Development Process
+1. **Design**: Plan what the script needs to do
+2. **Implement**: Create the script in `/scripts/` directory
+3. **Test locally**: Run the script in different environments/directories
+4. **Make executable**: `chmod +x scripts/script-name.sh`
+5. **Create workflow**: Simple YAML that calls the script
+6. **Document**: Add script usage to component README
+
+### Script Guidelines
+- Make scripts idempotent (safe to run multiple times)
+- Include proper error handling with meaningful exit codes
+- Accept parameters for customization (working directory, test patterns, etc.)
+- Print clear status messages for debugging
+- Work from any directory (use relative paths properly)
+
 
 ## Working with Specifications
 
@@ -71,14 +131,19 @@ These commands will be added once the build system is established:
 - `LICENSE` - Apache 2.0 license
 - `.gitignore` - Node.js focused ignore patterns
 - `.github/copilot-instructions.md` - This file
+- `.github/ARCHITECTURE.md` - Workflow architecture documentation with Mermaid diagrams
+- `.github/workflows/` - GitHub Actions CI/CD workflows
+- `RELEASE.md` - Release process documentation
+
+### Implemented Locations
+- `/spec/` - Core API type definitions (Zod schemas) ✅
+- `/reference-server/` - Fastify test server implementation ✅
+- `/clients/typescript/` - TypeScript client library ✅
 
 ### Future Important Locations
-- `/spec/` - Core API type definitions (Zod schemas)
-- `/reference-server/` - Fastify test server implementation
+- `/scripts/` - Build, test, and deployment scripts (CI calls these) 🎯
 - `/docs/` - Generated OpenAPI/Swagger documentation
-- `/clients/typescript/` - TypeScript client library
 - `/clients/python/` - Python client library
-- `/scripts/` - Build and utility scripts
 - `/tests/` - Test cases and fixtures
 - `CONTRIBUTING.md` - Contribution guidelines (planned)
 
