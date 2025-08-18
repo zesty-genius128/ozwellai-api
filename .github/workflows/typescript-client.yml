@@ -1,0 +1,145 @@
+name: TypeScript Client CI/CD
+
+# This workflow:
+# - Runs CI (build/lint/test) on every push and PR
+# - Publishes to npm and JSR only when a release is published
+# - Extracts version from git tag for immutable provenance
+# - Provides explicit "go" button via GitHub releases
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'clients/typescript/**'
+      - 'spec/**'
+      - '.github/workflows/typescript-client.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'clients/typescript/**'
+      - 'spec/**'
+      - '.github/workflows/typescript-client.yml'
+  release:
+    types: [published]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.runtime }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        runtime:
+          - { name: 'Node.js 18', version: '18' }
+          - { name: 'Node.js 20', version: '20' }
+          - { name: 'Node.js 22', version: '22' }
+          - { name: 'Deno', version: 'v1.x' }
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.runtime.version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            spec/package-lock.json
+            clients/typescript/package-lock.json
+
+      - name: Setup Deno
+        if: matrix.runtime.name == 'Deno'
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ matrix.runtime.version }}
+
+      - name: Install spec dependencies
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./spec
+        run: npm ci
+
+      - name: Build spec
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./spec
+        run: npm run build
+
+      - name: Install client dependencies
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./clients/typescript
+        run: npm ci
+
+      - name: Lint TypeScript client
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./clients/typescript
+        run: npm run lint
+
+      - name: Build TypeScript client
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./clients/typescript
+        run: npm run build
+
+      - name: Test on Node.js
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./clients/typescript
+        run: npm run test:node
+
+      - name: Test on Deno
+        if: matrix.runtime.name == 'Deno'
+        working-directory: ./clients/typescript
+        run: deno test --allow-net test/**/*.test.ts
+
+  publish-npm:
+    name: Publish to npm
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: ./scripts/extract-version.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish to npm
+        run: ./scripts/publish-client.sh ${{ steps.extract_version.outputs.version }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-jsr:
+    name: Publish to JSR
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: ./scripts/extract-version.sh
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Publish to JSR
+        run: ./scripts/publish-client.sh ${{ steps.extract_version.outputs.version }}
+        env:
+          JSR_ONLY: true

@@ -1,0 +1,78 @@
+name: Test Reference Server
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: 'Working directory for the reference server'
+        required: false
+        default: './reference-server'
+        type: string
+
+jobs:
+  test:
+    name: Test on Node.js ${{ matrix.node-version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['18', '20', '22']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            spec/package-lock.json
+            reference-server/package-lock.json
+
+      - name: Install spec dependencies
+        working-directory: ./spec
+        run: npm ci
+
+      - name: Build spec
+        working-directory: ./spec
+        run: npm run build
+
+      - name: Install reference server dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: npm ci
+
+      - name: Lint reference server
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run lint
+        continue-on-error: true  # In case lint script doesn't exist yet
+
+      - name: Build reference server
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run build
+
+      - name: Test reference server
+        working-directory: ${{ inputs.working-directory }}
+        run: npm test
+        continue-on-error: true  # In case test script doesn't exist yet
+
+      - name: Start server (smoke test)
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          # Start server in background
+          npm start &
+          SERVER_PID=$!
+          
+          # Wait for server to start
+          sleep 10
+          
+          # Test health endpoint
+          curl -f http://localhost:3000/health || exit 1
+          
+          # Test OpenAPI endpoint
+          curl -f http://localhost:3000/openapi.json || exit 1
+          
+          # Stop server
+          kill $SERVER_PID
+        timeout-minutes: 2

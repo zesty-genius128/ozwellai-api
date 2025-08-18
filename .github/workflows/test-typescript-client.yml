@@ -1,0 +1,78 @@
+name: Test TypeScript Client
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: 'Working directory for the client'
+        required: false
+        default: './clients/typescript'
+        type: string
+
+jobs:
+  test:
+    name: Test on ${{ matrix.runtime }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        runtime:
+          - { name: 'Node.js 18', version: '18' }
+          - { name: 'Node.js 20', version: '20' }
+          - { name: 'Node.js 22', version: '22' }
+          - { name: 'Deno', version: 'v1.x' }
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.runtime.version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            spec/package-lock.json
+            clients/typescript/package-lock.json
+
+      - name: Setup Deno
+        if: matrix.runtime.name == 'Deno'
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ matrix.runtime.version }}
+
+      - name: Install spec dependencies
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./spec
+        run: npm ci
+
+      - name: Build spec
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ./spec
+        run: npm run build
+
+      - name: Install client dependencies
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ${{ inputs.working-directory }}
+        run: npm ci
+
+      - name: Lint TypeScript client
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run lint
+
+      - name: Build TypeScript client
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run build
+
+      - name: Test on Node.js
+        if: startsWith(matrix.runtime.name, 'Node.js')
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run test:node
+
+      - name: Test on Deno
+        if: matrix.runtime.name == 'Deno'
+        working-directory: ${{ inputs.working-directory }}
+        run: deno test --allow-net test/**/*.test.ts

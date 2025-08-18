@@ -1,0 +1,25 @@
+name: Reference Server CI
+
+# Runs CI (lint/build/test) for the reference server on every push and PR
+# Uses reusable workflow for consistent testing
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'reference-server/**'
+      - 'spec/**'
+      - '.github/workflows/reference-server-ci.yml'
+      - '.github/workflows/test-reference-server.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'reference-server/**'
+      - 'spec/**'
+      - '.github/workflows/reference-server-ci.yml'
+      - '.github/workflows/test-reference-server.yml'
+
+jobs:
+  test:
+    name: CI Tests
+    uses: ./.github/workflows/test-reference-server.yml

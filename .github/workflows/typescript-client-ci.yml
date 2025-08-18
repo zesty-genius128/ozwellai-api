@@ -1,0 +1,25 @@
+name: TypeScript Client CI
+
+# Runs CI (lint/build/test) on every push and PR
+# Uses reusable workflow for consistent testing across all workflows
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'clients/typescript/**'
+      - 'spec/**'
+      - '.github/workflows/typescript-client-ci.yml'
+      - '.github/workflows/test-typescript-client.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'clients/typescript/**'
+      - 'spec/**'
+      - '.github/workflows/typescript-client-ci.yml'
+      - '.github/workflows/test-typescript-client.yml'
+
+jobs:
+  test:
+    name: CI Tests
+    uses: ./.github/workflows/test-typescript-client.yml

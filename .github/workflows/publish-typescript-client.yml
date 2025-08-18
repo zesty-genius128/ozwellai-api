@@ -1,0 +1,117 @@
+name: Publish TypeScript Client
+
+# Publishes to npm and JSR only when a release is published
+# Provides explicit "go" button via GitHub releases
+# Extracts version from git tag for immutable provenance
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  # Run tests first to ensure quality
+  test:
+    name: Pre-publish Tests
+    uses: ./.github/workflows/test-typescript-client.yml
+
+  publish-npm:
+    name: Publish to npm
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          # Validate that the tag looks like a version (v1.0.0 or 1.0.0)
+          if [[ ! $VERSION =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "Error: Tag '$VERSION' is not a valid semantic version"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: |
+            spec/package-lock.json
+            clients/typescript/package-lock.json
+
+      - name: Install spec dependencies
+        working-directory: ./spec
+        run: npm ci
+
+      - name: Build spec
+        working-directory: ./spec
+        run: npm run build
+
+      - name: Install client dependencies
+        working-directory: ./clients/typescript
+        run: npm ci
+
+      - name: Update package version
+        working-directory: ./clients/typescript
+        run: npm version ${{ steps.extract_version.outputs.version }} --no-git-tag-version
+
+      - name: Build client
+        working-directory: ./clients/typescript
+        run: npm run build
+
+      - name: Publish to npm
+        working-directory: ./clients/typescript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-jsr:
+    name: Publish to JSR
+    needs: test
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          # Validate that the tag looks like a version (v1.0.0 or 1.0.0)
+          if [[ ! $VERSION =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "Error: Tag '$VERSION' is not a valid semantic version"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Update JSR version
+        working-directory: ./clients/typescript
+        run: |
+          VERSION=${{ steps.extract_version.outputs.version }}
+          # Remove 'v' prefix if present (e.g., v1.0.0 -> 1.0.0)
+          VERSION=${VERSION#v}
+          # Update jsr.json with the new version
+          jq --arg version "$VERSION" '.version = $version' jsr.json > jsr.json.tmp
+          mv jsr.json.tmp jsr.json
+          echo "Updated jsr.json to version: $VERSION"
+
+      - name: Publish to JSR
+        working-directory: ./clients/typescript
+        run: deno publish
