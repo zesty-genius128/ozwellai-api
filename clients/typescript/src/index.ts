@@ -8,15 +8,40 @@ import type {
   FileListResponse,
   ResponseRequest,
   Response,
-} from '@mieweb/ozwellai-spec';
+} from './types.ts';
 
+/**
+ * Configuration options for the OzwellAI client.
+ */
 export interface OzwellAIConfig {
+  /** Your API key for authentication */
   apiKey: string;
+  /** Base URL for the API (defaults to OzwellAI endpoint) */
   baseURL?: string;
+  /** Request timeout in milliseconds */
   timeout?: number;
+  /** Default headers to include with all requests */
   defaultHeaders?: Record<string, string>;
 }
 
+/**
+ * OzwellAI API client for TypeScript/JavaScript applications.
+ * 
+ * Provides methods for chat completions, embeddings, file operations,
+ * and other API endpoints compatible with OpenAI's API format.
+ * 
+ * @example
+ * ```typescript
+ * const client = new OzwellAI({
+ *   apiKey: 'your-api-key'
+ * });
+ * 
+ * const response = await client.chat.completions.create({
+ *   model: 'gpt-3.5-turbo',
+ *   messages: [{ role: 'user', content: 'Hello!' }]
+ * });
+ * ```
+ */
 export class OzwellAI {
   private apiKey: string;
   private baseURL: string;
@@ -162,4 +187,4 @@ export type {
   FileListResponse,
   ResponseRequest,
   Response,
-} from '@mieweb/ozwellai-spec';
+} from './types.ts';

@@ -1,0 +1,11 @@
+{
+  "name": "@mieweb/ozwellai-spec",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "imports": {
+    "zod": "npm:zod@^3.22.4"
+  }
+}
