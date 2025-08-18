@@ -1,4 +1,7 @@
 {
+  "name": "@mieweb/ozwellai",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
   "lock": false,
   "imports": {
     "@mieweb/ozwellai-spec": "../../spec/index.ts",
@@ -10,5 +13,8 @@
   "compilerOptions": {
     "lib": ["deno.window"],
     "strict": true
+  },
+  "exports": {
+    ".": "./src/index.ts"
   }
 }
