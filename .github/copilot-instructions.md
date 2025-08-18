@@ -10,6 +10,19 @@ The Ozwell API specification project is an open and reliable source of truth for
 Make sure your code fits within the Planned Directory Structure (from README.md)
 Use a single TypeScript codebase with ESM-first design, build outputs for both ESM and CJS along with type definitions, publish to npm for Node users, and also publish to JSR to provide first-class DX for Deno, while ensuring compatibility by testing across Node and Deno in CI.
 
+## Documentation Preferences
+
+### Diagrams and Visual Documentation
+- **Always use Mermaid diagrams** instead of ASCII art for workflow diagrams, architecture diagrams, and flowcharts
+- Use appropriate Mermaid diagram types:
+  - `graph TB` or `graph LR` for workflow architectures
+  - `flowchart TD` for process flows
+  - `sequenceDiagram` for API interactions
+  - `gitgraph` for branch/release strategies
+- Include styling with `classDef` for better visual hierarchy
+- Add descriptive comments and emojis for clarity
+- Reference `.github/ARCHITECTURE.md` as an example of preferred Mermaid diagram style
+
 
 ## Working with Specifications
 
