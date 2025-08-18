@@ -1,4 +1,5 @@
-import { test, assert } from 'node:test';
+import { test } from 'node:test';
+import assert from 'node:assert';
 import OzwellAI from '../src/index.js';
 
 test('OzwellAI client instantiation', () => {
