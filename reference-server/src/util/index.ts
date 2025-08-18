@@ -44,7 +44,7 @@ export class SimpleTextGenerator {
     " I'm here if you have more questions.",
   ];
 
-  static generate(prompt: string, maxTokens: number = 150, temperature: number = 0.7): string {
+  static generate(prompt: string, maxTokens: number = 150, _temperature: number = 0.7): string {
     // Create a seed based on the prompt for deterministic output
     const seed = this.hashString(prompt) % 1000000;
     const rng = this.seededRandom(seed);

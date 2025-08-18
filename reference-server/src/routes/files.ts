@@ -1,5 +1,4 @@
 import { FastifyPluginAsync } from 'fastify';
-import { FileObjectSchema, FileListResponseSchema } from '../../../spec';
 import { validateAuth, createError, generateId } from '../util';
 import * as fs from 'fs/promises';
 import * as path from 'path';

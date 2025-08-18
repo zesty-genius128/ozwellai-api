@@ -1,5 +1,4 @@
 import { FastifyPluginAsync } from 'fastify';
-import { ResponseRequestSchema, ResponseSchema } from '../../../spec';
 import { validateAuth, createError, SimpleTextGenerator, generateId, countTokens } from '../util';
 
 const responsesRoute: FastifyPluginAsync = async (fastify) => {

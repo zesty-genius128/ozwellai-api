@@ -95,6 +95,24 @@ if [[ -d "$PROJECT_ROOT/reference-server" ]]; then
         echo "  ✓ Removed reference-server/dist/"
     fi
     
+    # Remove node_modules if deep clean
+    if [[ "$DEEP_CLEAN" == "true" ]] && [[ -d "node_modules" ]]; then
+        rm -rf node_modules
+        echo "  ✓ Removed reference-server/node_modules/"
+    fi
+    
+    # Remove package-lock if deep clean  
+    if [[ "$DEEP_CLEAN" == "true" ]] && [[ -f "package-lock.json" ]]; then
+        rm -f package-lock.json
+        echo "  ✓ Removed reference-server/package-lock.json"
+    fi
+    
+    # Remove npm logs
+    if [[ -f "npm-debug.log" ]]; then
+        rm -f npm-debug.log
+        echo "  ✓ Removed npm-debug.log"
+    fi
+    
     # Remove Docker build cache (optional)
     # docker builder prune -f 2>/dev/null || true
 fi
@@ -114,5 +132,6 @@ echo ""
 echo "✅ Clean completed!"
 echo ""
 echo "To rebuild everything:"
-echo "  ./scripts/build-client.sh"
-echo "  ./scripts/test-local.sh"
+echo "  ./scripts/build-client.sh     # Build TypeScript client"
+echo "  ./scripts/build-server.sh     # Build reference server"
+echo "  ./scripts/test-local.sh       # Test complete workflow"

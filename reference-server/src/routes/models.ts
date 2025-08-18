@@ -1,5 +1,4 @@
 import { FastifyPluginAsync } from 'fastify';
-import { ModelsListResponseSchema } from '../../../spec';
 import { validateAuth, createError } from '../util';
 
 const modelsRoute: FastifyPluginAsync = async (fastify) => {

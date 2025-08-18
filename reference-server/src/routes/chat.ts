@@ -1,5 +1,4 @@
 import { FastifyPluginAsync } from 'fastify';
-import { ChatCompletionRequestSchema, ChatCompletionResponseSchema, ChatCompletionChunkSchema } from '../../../spec';
 import { validateAuth, createError, SimpleTextGenerator, generateId, countTokens } from '../util';
 
 const chatRoute: FastifyPluginAsync = async (fastify) => {
@@ -73,7 +72,6 @@ const chatRoute: FastifyPluginAsync = async (fastify) => {
       });
 
       const generator = SimpleTextGenerator.generateStream(prompt, max_tokens);
-      let index = 0;
       
       // Send initial chunk with role
       const initialChunk = {
