@@ -1,4 +1,5 @@
 {
+  "lock": false,
   "imports": {
     "@mieweb/ozwellai-spec": "../../spec/index.ts"
   },
