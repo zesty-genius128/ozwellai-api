@@ -75,4 +75,4 @@ jobs:
       - name: Test on Deno
         if: matrix.runtime.name == 'Deno'
         working-directory: ${{ inputs.working-directory }}
-        run: deno test --allow-net test/**/*.test.ts
+        run: deno test --config deno.json --allow-net test/**/*.deno.test.ts

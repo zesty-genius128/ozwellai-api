@@ -87,8 +87,7 @@ jobs:
 
       - name: Test on Deno
         if: matrix.runtime.name == 'Deno'
-        working-directory: ./clients/typescript
-        run: deno test --allow-net test/**/*.test.ts
+        run: ./scripts/test-deno.sh
 
   publish-npm:
     name: Publish to npm

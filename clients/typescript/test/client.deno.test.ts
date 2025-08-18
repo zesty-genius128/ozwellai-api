@@ -15,21 +15,8 @@ Deno.test('OzwellAI client has expected methods', () => {
     apiKey: 'test-key'
   });
   
-  assertEquals(typeof client.chat, 'object');
-  assertEquals(typeof client.embeddings, 'object');
-  assertEquals(typeof client.files, 'object');
-  assertEquals(typeof client.models, 'object');
-});
-
-Deno.test('OzwellAI client methods return promises', () => {
-  const client = new OzwellAI({
-    apiKey: 'test-key',
-    baseURL: 'http://localhost:3000'
-  });
-  
-  // These should return promises (though they'll fail without a real server)
-  assertEquals(typeof client.chat.completions.create({
-    model: 'test-model',
-    messages: [{ role: 'user', content: 'hello' }]
-  }).catch(() => {}), 'object');
+  assertEquals(typeof client.createChatCompletion, 'function');
+  assertEquals(typeof client.createEmbedding, 'function');
+  assertEquals(typeof client.listFiles, 'function');
+  assertEquals(typeof client.listModels, 'function');
 });

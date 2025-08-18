@@ -50,7 +50,13 @@ done
 
 # Run tests
 echo "🧪 Running tests..."
+echo "  📦 Testing Node.js compatibility..."
 npm run test:node
+
+echo "  🦕 Testing Deno compatibility..."
+cd "$PROJECT_ROOT"
+./scripts/test-deno.sh
+cd "$CLIENT_DIR"
 
 echo "✅ Build completed successfully!"
 echo "📦 Package ready for publishing from: $CLIENT_DIR"

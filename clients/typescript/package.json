@@ -30,7 +30,7 @@
     "dev": "tsc -p tsconfig.esm.json --watch",
     "test": "npm run test:node",
     "test:node": "node --test test/**/*.test.js",
-    "test:deno": "deno test test/**/*.deno.test.ts --allow-net",
+    "test:deno": "deno test --config deno.json --allow-net test/**/*.deno.test.ts",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts",
     "prepublishOnly": "npm run build && npm run test",

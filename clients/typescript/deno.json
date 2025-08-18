@@ -1,0 +1,12 @@
+{
+  "imports": {
+    "@mieweb/ozwellai-spec": "../../spec/index.ts"
+  },
+  "tasks": {
+    "test": "deno test --config deno.json --allow-net test/**/*.deno.test.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  }
+}
