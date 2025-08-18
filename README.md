@@ -27,10 +27,6 @@ This repository is organized to provide a clear separation between the API speci
   /python            # Python client implementation
 /docs                # Generated OpenAPI/Swagger docs and usage guides
 /scripts             # Utility scripts (e.g., for codegen, validation)
-/tests               # Shared test cases and fixtures
-README.md
-CONTRIBUTING.md
-LICENSE
 ```
 
 ### Directory Details
@@ -50,38 +46,28 @@ LICENSE
 - **/scripts**  
   Includes utility scripts for tasks such as generating OpenAPI documentation from Zod definitions, running the reference server, or validating the API spec.
 
-- **/tests**  
-  Contains shared test cases and fixtures that can be used to validate both the API spec and the reference server implementation.
-
-- **Top-level files**  
-  Standard project files for onboarding, contribution, and licensing.
-
 ---
 
 ## To-Do List
 
 ### Core Specification
-- [ ] Define all base types using Zod
-- [ ] Implement endpoint definitions (call-for-call with OpenAI)
+- [X] Define all base types using Zod
+- [X] Implement endpoint definitions (call-for-call with OpenAI)
 - [ ] Add indexedCP upload endpoints for reliable file delivery
 - [ ] Add conversation management/sharing endpoints
 
 ### Documentation
-- [ ] Set up OpenAPI generation from Zod
-- [ ] Integrate Swagger UI for interactive docs
+- [X] Set up OpenAPI generation from Zod
+- [X] Integrate Swagger UI for interactive docs
 - [ ] Write usage examples for each endpoint
 
 ### Client Implementations
-- [ ] TypeScript client: auto-generate types and API calls from spec
+- [X] TypeScript client: auto-generate types and API calls from spec
 - [ ] Python client: mirror TypeScript client functionality
 
 ### Reference Testing Implementation
-- [ ] Add Fastify server stub that returns hard-coded responses for all endpoints
-- [ ] Document how to use the server stub for local testing and integration
-
-### Repository Management
-- [ ] Document contribution guidelines
-- [ ] Add code of conduct
+- [X] Add Fastify server stub that returns hard-coded responses for all endpoints
+- [X] Document how to use the server stub for local testing and integration
 
 ### Enhanced Features
 - [ ] Document and implement enhanced features (to be discussed)
