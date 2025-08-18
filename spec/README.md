@@ -9,7 +9,50 @@ This directory contains the canonical Zod-based API specification for the Ozwell
 - `tsconfig.json` - TypeScript configuration for building the spec
 - `dist/` - Compiled JavaScript and type definitions (generated)
 
-## Usage
+## Usage Patterns
+
+### Most Common: Git Submodule (Recommended)
+
+For most use cases, you'll want to include this entire repository as a Git submodule to get both the specification and reference server:
+
+```bash
+git submodule add https://github.com/mieweb/ozwellai-api.git
+```
+
+This gives you access to:
+- The complete API specification in `/spec`
+- The reference Fastify server implementation in `/reference-server`
+- All documentation and examples
+
+### Less Common: NPM Package for Spec Only
+
+If you only need the Zod schemas (rare), you can install just the spec:
+
+```bash
+npm install @mieweb/ozwellai-spec
+```
+
+```typescript
+import { ChatCompletionRequestSchema, ChatCompletionResponseSchema } from '@mieweb/ozwellai-spec';
+```
+
+### End-User Client Usage
+
+Most end users won't interact with this spec directly. They'll use the main client library:
+
+```typescript
+// ES Modules
+import OzwellAI from "ozwellai";
+
+// Or in CommonJS:
+// const OzwellAI = require("ozwellai");
+
+const client = new OzwellAI({
+  apiKey: process.env.OZWELLAI_API_KEY, // best practice: load from env
+});
+```
+
+## Local Development
 
 ### Installing Dependencies
 
@@ -31,12 +74,28 @@ npm run dev
 
 ## Importing from Other Projects
 
-From the reference server or other TypeScript projects:
+### From TypeScript Projects (Direct Schema Import)
 
 ```typescript
 import { ChatCompletionRequestSchema, ChatCompletionResponseSchema } from '../../../spec';
 // or if using this as a package:
-import { ChatCompletionRequestSchema, ChatCompletionResponseSchema } from '@ozwell/api-spec';
+import { ChatCompletionRequestSchema, ChatCompletionResponseSchema } from '@mieweb/ozwellai-spec';
+```
+
+### Client Usage Pattern
+
+For end-user applications, the recommended usage pattern is:
+
+```typescript
+// ES Modules
+import OzwellAI from "ozwellai";
+
+// Or in CommonJS:
+// const OzwellAI = require("ozwellai");
+
+const client = new OzwellAI({
+  apiKey: process.env.OZWELLAI_API_KEY, // best practice: load from env
+});
 ```
 
 ## Schemas Included

@@ -1,5 +1,5 @@
 {
-  "name": "@ozwell/api-spec",
+  "name": "@mieweb/ozwellai-spec",
   "version": "1.0.0",
   "description": "Ozwell API specification using Zod schemas",
   "main": "dist/index.js",

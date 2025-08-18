@@ -1,0 +1,75 @@
+{
+  "name": "ozwellai",
+  "version": "1.0.0",
+  "description": "Official TypeScript/JavaScript client for OzwellAI API",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:types",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rm -rf dist",
+    "dev": "tsc -p tsconfig.esm.json --watch",
+    "test": "npm run test:node && npm run test:deno",
+    "test:node": "node --test test/**/*.test.js",
+    "test:deno": "deno test test/**/*.test.ts",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "ozwell",
+    "ozwellai", 
+    "openai",
+    "ai",
+    "api",
+    "client",
+    "typescript",
+    "javascript",
+    "esm",
+    "commonjs"
+  ],
+  "author": "MieWeb",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mieweb/ozwellai-api.git",
+    "directory": "clients/typescript"
+  },
+  "homepage": "https://github.com/mieweb/ozwellai-api/tree/main/clients/typescript",
+  "bugs": {
+    "url": "https://github.com/mieweb/ozwellai-api/issues"
+  },
+  "dependencies": {
+    "@mieweb/ozwellai-spec": "file:../../spec"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
