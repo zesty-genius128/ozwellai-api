@@ -1,5 +1,16 @@
 # Ozwell Public API Specification
 
+[![CI](https://github.com/mieweb/ozwellai-api/actions/workflows/ci.yml/badge.svg)](https://github.com/mieweb/ozwellai-api/actions/workflows/ci.yml)
+[![TypeScript Client CI](https://github.com/mieweb/ozwellai-api/actions/workflows/typescript-client-ci.yml/badge.svg)](https://github.com/mieweb/ozwellai-api/actions/workflows/typescript-client-ci.yml)
+[![npm version](https://badge.fury.io/js/ozwellai.svg)](https://badge.fury.io/js/ozwellai)
+[![JSR](https://jsr.io/badges/@mieweb/ozwellai)](https://jsr.io/@mieweb/ozwellai)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![Deno](https://img.shields.io/badge/Deno-Compatible-00599C.svg)](https://deno.land/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org/)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-brightgreen.svg)](https://swagger.io/specification/)
+[![Zod](https://img.shields.io/badge/Schema-Zod-blue.svg)](https://github.com/colinhacks/zod)
+
 ## Philosophy
 
 This public repository for Ozwell API is the canonical reference for the API, enabling both internal and external teams to build against a stable, well-documented contract.
