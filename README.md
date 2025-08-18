@@ -3,7 +3,6 @@
 [![CI](https://github.com/mieweb/ozwellai-api/actions/workflows/ci.yml/badge.svg)](https://github.com/mieweb/ozwellai-api/actions/workflows/ci.yml)
 [![TypeScript Client CI](https://github.com/mieweb/ozwellai-api/actions/workflows/typescript-client-ci.yml/badge.svg)](https://github.com/mieweb/ozwellai-api/actions/workflows/typescript-client-ci.yml)
 [![npm version](https://badge.fury.io/js/ozwellai.svg)](https://badge.fury.io/js/ozwellai)
-[![JSR](https://jsr.io/badges/@mieweb/ozwellai)](https://jsr.io/@mieweb/ozwellai)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 [![Deno](https://img.shields.io/badge/Deno-Compatible-00599C.svg)](https://deno.land/)
