@@ -114,4 +114,4 @@ jobs:
 
       - name: Publish to JSR
         working-directory: ./clients/typescript
-        run: deno publish --provenance
+        run: deno publish
