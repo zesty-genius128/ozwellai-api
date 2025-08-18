@@ -1,6 +1,5 @@
 {
   "lock": false,
-  "nodeModulesDir": "auto",
   "imports": {
     "@mieweb/ozwellai-spec": "../../spec/index.ts",
     "zod": "npm:zod@^3.22.4"
