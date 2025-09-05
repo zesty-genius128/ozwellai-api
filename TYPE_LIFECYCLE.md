@@ -14,28 +14,166 @@ This file contains Zod schema definitions that serve as:
 - API contract specification
 - Documentation foundation
 
+## Complete Spec Directory Architecture
+
+The `/spec` directory contains several files that work together in the type lifecycle:
+
+### Core Files
+
+| File | Purpose | Role in Lifecycle |
+|------|---------|-------------------|
+| `index.ts` | **Primary source** - Zod schema definitions | 🎯 Canonical API type definitions |
+| `package.json` | NPM package configuration | 📦 Node.js distribution setup |
+| `deno.json` | Deno package configuration | 🦕 Deno/JSR distribution setup |
+| `tsconfig.json` | TypeScript compilation settings | ⚙️ Build configuration |
+| `README.md` | Package documentation | 📚 Usage instructions |
+
+### Generated Files (Build Outputs)
+
+| File | Generated From | Purpose |
+|------|----------------|---------|
+| `index.js` | `index.ts` | 📦 Compiled JavaScript for Node.js |
+| `index.d.ts` | `index.ts` | 📝 TypeScript definitions for consumers |
+| `index.js.map` | `index.ts` | 🗺️ Source map for debugging |
+| `index.d.ts.map` | `index.ts` | 🗺️ Type definition source map |
+
+### Dual Runtime Support
+
+The spec supports both Node.js and Deno environments:
+
+- **Node.js**: Uses `package.json` + NPM publishing
+- **Deno**: Uses `deno.json` + JSR (JavaScript Registry) publishing
+
+This enables the "ESM-first design" with compatibility across runtimes.
+
 ```mermaid
 graph TB
-    Source["/spec/index.ts<br/>🎯 Canonical Zod Schemas"]
+    subgraph "📁 /spec Directory"
+        Source["/spec/index.ts<br/>🎯 Canonical Zod Schemas"]
+        PkgJSON["/spec/package.json<br/>📦 Node.js Package Config"]
+        DenoJSON["/spec/deno.json<br/>🦕 Deno Package Config"]
+        TSConfig["/spec/tsconfig.json<br/>⚙️ TypeScript Build Config"]
+        SpecREADME["/spec/README.md<br/>📚 Package Documentation"]
+    end
     
-    Build["/spec/dist/<br/>📦 Generated TypeScript Types"]
-    Client["/clients/typescript/src/<br/>📱 Client Implementation"]
-    Docs["/docs/<br/>📚 Generated API Documentation"]
-    Server["/reference-server/<br/>🔧 Reference Implementation"]
+    subgraph "🏗️ Generated Outputs"
+        BuildJS["/spec/index.js<br/>📦 Compiled JavaScript"]
+        BuildDTS["/spec/index.d.ts<br/>📝 TypeScript Definitions"]
+        BuildMaps["/spec/*.map<br/>🗺️ Source Maps"]
+    end
     
-    Source --> Build
-    Build --> Client
-    Source --> Docs
+    subgraph "📱 Consumers"
+        Client["/clients/typescript/<br/>📱 Client Implementation"]
+        Server["/reference-server/<br/>🔧 Reference Implementation"]
+        Docs["/docs/<br/>📚 Generated API Documentation"]
+    end
+    
+    subgraph "🌐 Distribution"
+        NPM["📦 NPM Registry<br/>(Node.js)"]
+        JSR["🦕 JSR Registry<br/>(Deno)"]
+    end
+    
+    Source --> BuildJS
+    Source --> BuildDTS
+    Source --> BuildMaps
+    TSConfig --> BuildJS
+    TSConfig --> BuildDTS
+    
+    BuildDTS --> Client
     Source --> Server
+    Source --> Docs
+    
+    PkgJSON --> NPM
+    DenoJSON --> JSR
+    BuildJS --> NPM
+    BuildDTS --> NPM
+    Source --> JSR
     
     classDef source fill:#e8f5e8,stroke:#1b5e20,stroke-width:3px
+    classDef config fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef generated fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef consumer fill:#e3f2fd,stroke:#0d47a1,stroke-width:2px
+    classDef distribution fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     
     class Source source
-    class Build,Docs generated
-    class Client,Server consumer
+    class PkgJSON,DenoJSON,TSConfig,SpecREADME config
+    class BuildJS,BuildDTS,BuildMaps generated
+    class Client,Server,Docs consumer
+    class NPM,JSR distribution
 ```
+
+## Detailed File Roles
+
+### Source Files
+
+#### `/spec/index.ts` - The Canonical Source
+```typescript
+// Primary source of truth - all API types defined here
+export const MessageSchema = z.object({
+  role: z.enum(['system', 'user', 'assistant']),
+  content: z.string().nullable(),
+  // ...
+});
+
+export type Message = z.infer<typeof MessageSchema>;
+```
+
+#### `/spec/package.json` - Node.js Distribution
+```json
+{
+  "name": "@mieweb/ozwellai-spec",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "zod": "^3.22.0"
+  }
+}
+```
+- Configures NPM package for Node.js environments
+- Specifies entry points for JavaScript and TypeScript
+- Declares Zod dependency
+
+#### `/spec/deno.json` - Deno Distribution  
+```json
+{
+  "name": "@mieweb/ozwellai-spec",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "imports": {
+    "zod": "npm:zod@^3.22.4"
+  }
+}
+```
+- Configures package for Deno/JSR publishing
+- Enables direct TypeScript import (no build step needed for Deno)
+- Maps Zod dependency to NPM import
+
+#### `/spec/tsconfig.json` - Build Configuration
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}
+```
+- Configures TypeScript compilation for dual ESM/CJS output
+- Enables type definition generation
+- Generates source maps for debugging
+
+### Generated Files (Build Outputs)
+
+These files are created during `npm run build` and should not be edited manually:
+
+- **`index.js`** - Compiled JavaScript for Node.js runtime
+- **`index.d.ts`** - TypeScript definitions for consumers to import
+- **`index.js.map`** - Source map linking compiled JS back to TS
+- **`index.d.ts.map`** - Source map for TypeScript definitions
 
 ## Type Lifecycle Flow
 
@@ -83,23 +221,71 @@ Types are consumed by different parts of the system:
 - **Generation**: OpenAPI/Swagger docs generated from Zod schemas
 - **Output**: `/docs/` directory (when implemented)
 
-## Modifying Types
+## Modification Workflows
 
-### Process for Type Changes
+### Adding/Changing API Types
 
-1. **Edit Source**: Modify Zod schemas in `/spec/index.ts`
-2. **Build Spec**: Run `npm run build` in `/spec` directory
-3. **Update Consumers**: Rebuild clients and update dependencies
-4. **Test Changes**: Run all relevant tests
-5. **Validate**: Ensure OpenAPI docs regenerate correctly
+**Only modify `/spec/index.ts`** - all other files are either generated or configuration:
 
-### Example Change Process
+1. **Edit the source**: Make changes to Zod schemas in `/spec/index.ts`
+2. **Build the spec**: Run `npm run build` in `/spec` directory  
+3. **Update consumers**: Reference server, clients automatically get new types
+4. **Test integration**: Run tests to ensure compatibility
+
+### Updating Package Configuration
+
+#### For Node.js Distribution (`/spec/package.json`)
+- Update version, dependencies, or build settings
+- Changes affect NPM publishing and Node.js compatibility
+
+#### For Deno Distribution (`/spec/deno.json`)  
+- Update version, exports, or import mappings
+- Changes affect JSR publishing and Deno compatibility
+
+#### For Build Process (`/spec/tsconfig.json`)
+- Update TypeScript compilation settings
+- Changes affect generated JavaScript and type definitions
+
+### File Modification Rules
+
+| File Type | Modification Rule | Reason |
+|-----------|------------------|--------|
+| `index.ts` | ✅ **Edit directly** | Source of truth for API types |
+| `package.json` | ✅ **Edit for config changes** | Controls Node.js distribution |  
+| `deno.json` | ✅ **Edit for config changes** | Controls Deno distribution |
+| `tsconfig.json` | ✅ **Edit for build changes** | Controls TypeScript compilation |
+| `README.md` | ✅ **Edit for documentation** | Package usage instructions |
+| `index.js` | ❌ **Never edit** | Generated from TypeScript |
+| `index.d.ts` | ❌ **Never edit** | Generated from TypeScript |
+| `*.map` | ❌ **Never edit** | Generated source maps |
+
+### Version Management
+
+When making changes, update versions in **both**:
+- `/spec/package.json` (for NPM)
+- `/spec/deno.json` (for JSR)
+
+Keep versions synchronized between both package configurations.
+
+### Example Complete Workflow
 
 ```bash
-# 1. Edit the source schema
-vim /spec/index.ts
+# 1. Edit the API types
+code /spec/index.ts
 
-# 2. Build the spec
+# 2. Update version if needed
+# Edit both /spec/package.json and /spec/deno.json
+
+# 3. Build to generate TypeScript definitions  
+cd /spec && npm run build
+
+# 4. Check that consumers can import new types
+cd /reference-server && npm run build
+cd /clients/typescript && npm run build
+
+# 5. Run tests to verify compatibility
+npm test
+```
 cd /spec && npm run build
 
 # 3. Update TypeScript client

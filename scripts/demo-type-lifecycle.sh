@@ -11,9 +11,31 @@ echo "🔍 Type Lifecycle Demonstration"
 echo "================================"
 echo ""
 
+# Show the complete spec directory structure
+echo "📁 Complete Spec Directory Structure:"
+echo "======================================"
+ls -la "$PROJECT_ROOT/spec"
+echo ""
+
 # 1. Show the source of truth
 echo "📋 Source of Truth: /spec/index.ts"
 echo "Contains Zod schemas that define all API types"
+echo ""
+
+# Show configuration files
+echo "⚙️  Configuration Files:"
+echo "------------------------"
+echo ""
+echo "📦 Node.js Package Config (/spec/package.json):"
+cat "$PROJECT_ROOT/spec/package.json" | jq '.name, .main, .types, .dependencies'
+echo ""
+
+echo "🦕 Deno Package Config (/spec/deno.json):"
+cat "$PROJECT_ROOT/spec/deno.json" | jq '.name, .exports, .imports'
+echo ""
+
+echo "🔧 TypeScript Build Config (/spec/tsconfig.json):"
+cat "$PROJECT_ROOT/spec/tsconfig.json" | jq '.compilerOptions | {target, module, declaration, sourceMap}'
 echo ""
 
 # 2. Build the spec to show generated types
@@ -22,13 +44,18 @@ cd "$PROJECT_ROOT/spec"
 npm run build
 
 echo "✅ Generated files:"
-ls -la dist/
+echo "📄 Build outputs (created by TypeScript compilation):"
+ls -la "$PROJECT_ROOT/spec"/*.js "$PROJECT_ROOT/spec"/*.d.ts "$PROJECT_ROOT/spec"/*.map 2>/dev/null || echo "No generated files found - run 'npm run build' in /spec"
 echo ""
 
 # 3. Show what should be consumed
 echo "📦 Generated Type Definitions:"
 echo "These should be imported by clients:"
-head -20 dist/index.d.ts
+if [ -f "$PROJECT_ROOT/spec/index.d.ts" ]; then
+    head -20 "$PROJECT_ROOT/spec/index.d.ts"
+else
+    echo "⚠️  index.d.ts not found - run 'npm run build' in /spec directory"
+fi
 echo "... (truncated)"
 echo ""
 
