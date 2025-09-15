@@ -45,6 +45,33 @@ const client = new OzwellAI({
 });
 ```
 
+### Ollama Integration
+
+For local development or testing with Ollama, use the special `ollama` API key to automatically connect to your local Ollama instance:
+
+```typescript
+const ollamaClient = new OzwellAI({
+  apiKey: 'ollama' // Automatically connects to http://localhost:11434
+});
+
+// Use any model you have installed in Ollama
+const response = await ollamaClient.createChatCompletion({
+  model: 'llama2', // or any model installed in your Ollama
+  messages: [
+    { role: 'user', content: 'Hello from Ollama!' }
+  ]
+});
+```
+
+The client will automatically use `http://localhost:11434` as the base URL when the API key is set to `"ollama"` (case-insensitive). You can still override the `baseURL` if your Ollama instance is running on a different host or port.
+
+**Prerequisites for Ollama:**
+1. Install Ollama from [https://ollama.ai](https://ollama.ai) 
+2. Pull at least one model: `ollama pull llama2`
+3. Ensure Ollama is running: `ollama serve` (usually starts automatically)
+
+See [`examples/ollama-example.ts`](./examples/ollama-example.ts) for a complete working example.
+
 ### Chat Completions
 
 ```typescript

@@ -20,3 +20,21 @@ Deno.test('OzwellAI client has expected methods', () => {
   assertEquals(typeof client.listFiles, 'function');
   assertEquals(typeof client.listModels, 'function');
 });
+
+Deno.test('OzwellAI client with Ollama configuration', () => {
+  const client = new OzwellAI({
+    apiKey: 'ollama'
+  });
+  
+  assertEquals(typeof client, 'object');
+  assertEquals(client.constructor.name, 'OzwellAI');
+});
+
+Deno.test('OzwellAI client with Ollama (case insensitive)', () => {
+  const client = new OzwellAI({
+    apiKey: 'OLLAMA'
+  });
+  
+  assertEquals(typeof client, 'object');
+  assertEquals(client.constructor.name, 'OzwellAI');
+});

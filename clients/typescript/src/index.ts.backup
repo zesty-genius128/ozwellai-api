@@ -14,12 +14,9 @@ import type {
  * Configuration options for the OzwellAI client.
  */
 export interface OzwellAIConfig {
-  /** 
-   * Your API key for authentication. 
-   * Special value: Use "ollama" to automatically connect to Ollama on localhost:11434
-   */
+  /** Your API key for authentication */
   apiKey: string;
-  /** Base URL for the API (defaults to OzwellAI endpoint, or http://localhost:11434 for Ollama) */
+  /** Base URL for the API (defaults to OzwellAI endpoint) */
   baseURL?: string;
   /** Request timeout in milliseconds */
   timeout?: number;
@@ -33,19 +30,10 @@ export interface OzwellAIConfig {
  * Provides methods for chat completions, embeddings, file operations,
  * and other API endpoints compatible with OpenAI's API format.
  * 
- * Special behavior: When apiKey is "ollama", the client automatically
- * connects to Ollama running on localhost (http://localhost:11434).
- * 
  * @example
  * ```typescript
- * // Regular usage
  * const client = new OzwellAI({
  *   apiKey: 'your-api-key'
- * });
- * 
- * // Ollama usage (connects to localhost:11434)
- * const ollamaClient = new OzwellAI({
- *   apiKey: 'ollama'
  * });
  * 
  * const response = await client.chat.completions.create({
@@ -62,14 +50,7 @@ export class OzwellAI {
 
   constructor(config: OzwellAIConfig) {
     this.apiKey = config.apiKey;
-    
-    // Use Ollama localhost endpoint if apiKey is "ollama"
-    if (config.apiKey.toLowerCase() === 'ollama') {
-      this.baseURL = config.baseURL || 'http://localhost:11434';
-    } else {
-      this.baseURL = config.baseURL || 'https://api.ozwell.ai';
-    }
-    
+    this.baseURL = config.baseURL || 'https://api.ozwell.ai';
     this.timeout = config.timeout || 30000;
     this.defaultHeaders = {
       'Content-Type': 'application/json',
