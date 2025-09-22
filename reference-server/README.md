@@ -5,7 +5,7 @@ An OpenAI-compatible Fastify server that provides a reference implementation of 
 ## Features
 
 - **Full OpenAI API Compatibility**: Wire-compatible with OpenAI's API specification
-- **Real Text Inference**: Uses deterministic text generation for predictable testing
+- **Real Text Inference**: Proxies to a configurable Llama backend (Ollama by default)
 - **Streaming Support**: Server-Sent Events (SSE) for both `/v1/responses` and `/v1/chat/completions`
 - **File Management**: Complete file upload, download, and management system
 - **Docker Support**: Multi-architecture Docker images with security best practices
@@ -27,11 +27,39 @@ An OpenAI-compatible Fastify server that provides a reference implementation of 
 # Install dependencies
 npm install
 
+# (Optional) start Ollama in another terminal
+# ollama serve
+
 # Start development server
 npm run dev
 ```
 
 The server will start at `http://localhost:3000`
+
+### Configure Llama Backend
+
+The chat completion endpoint forwards requests to a Llama-compatible API. By default it targets a local Ollama instance at `http://localhost:11434/v1` and exposes the `llama3` model. You can override the target and models with environment variables:
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `LLAMA_BASE_URL` | Base URL for the upstream OpenAI-compatible endpoint | `http://localhost:11434/v1` |
+| `LLAMA_API_KEY` | Optional bearer token passed to the upstream API | _empty_ |
+| `LLAMA_MODELS` | Comma-separated list of model ids to expose via `/v1/models` | `llama3` |
+
+Example:
+
+```bash
+export LLAMA_BASE_URL="http://localhost:11434/v1"
+export LLAMA_MODELS="llama3,llama3.1"
+npm run dev
+```
+
+If you are using Ollama locally:
+
+```bash
+ollama pull llama3
+ollama serve
+```
 
 ### Available Scripts
 
@@ -49,7 +77,7 @@ The server will start at `http://localhost:3000`
 - `POST /v1/chat/completions` - Create chat completion (supports streaming)
 
 ### Responses (New Primitive)
-- `POST /v1/responses` - Generate response with semantic events streaming
+- `POST /v1/responses` - Generate response with semantic events streaming (uses the built-in deterministic generator)
 
 ### Embeddings
 - `POST /v1/embeddings` - Generate text embeddings
@@ -87,7 +115,7 @@ curl -H "Authorization: Bearer test" http://localhost:3000/v1/models
 ```bash
 curl -H "Authorization: Bearer test" \
      -H "Content-Type: application/json" \
-     -d '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello!"}]}' \
+     -d '{"model":"llama3","messages":[{"role":"user","content":"Hello!"}]}' \
      http://localhost:3000/v1/chat/completions
 ```
 
@@ -95,7 +123,7 @@ curl -H "Authorization: Bearer test" \
 ```bash
 curl -N -H "Authorization: Bearer test" \
      -H "Content-Type: application/json" \
-     -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}],"stream":true}' \
+     -d '{"model":"llama3","messages":[{"role":"user","content":"hi"}],"stream":true}' \
      http://localhost:3000/v1/chat/completions
 ```
 
@@ -103,7 +131,7 @@ curl -N -H "Authorization: Bearer test" \
 ```bash
 curl -H "Authorization: Bearer test" \
      -H "Content-Type: application/json" \
-     -d '{"model":"gpt-4o","input":"hello"}' \
+     -d '{"model":"llama3","input":"hello"}' \
      http://localhost:3000/v1/responses
 ```
 
@@ -111,7 +139,7 @@ curl -H "Authorization: Bearer test" \
 ```bash
 curl -N -H "Authorization: Bearer test" \
      -H "Content-Type: application/json" \
-     -d '{"model":"gpt-4o","input":"stream please","stream":true}' \
+     -d '{"model":"llama3","input":"stream please","stream":true}' \
      http://localhost:3000/v1/responses
 ```
 
@@ -143,7 +171,7 @@ const ozwellai = new OpenAI({
 });
 
 const response = await ozwellai.chat.completions.create({
-  model: "gpt-4o",
+  model: "llama3",
   messages: [{ role: "user", content: "Hello!" }]
 });
 ```
@@ -158,7 +186,7 @@ ozwellai = OpenAI(
 )
 
 response = ozwellai.chat.completions.create(
-    model="gpt-4o",
+    model="llama3",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
@@ -184,11 +212,8 @@ rm -rf data/
 
 ## Text Generation
 
-The server uses a deterministic text generation system that:
-- Provides consistent, predictable outputs for testing
-- Generates contextually relevant responses based on input
-- Supports streaming with realistic token-by-token delivery
-- Maintains proper token counting for usage statistics
+- `/v1/chat/completions` forwards directly to the configured Llama backend, including streaming
+- `/v1/responses` keeps the deterministic generator so you can run consistent tests with semantic events
 
 ## Streaming
 

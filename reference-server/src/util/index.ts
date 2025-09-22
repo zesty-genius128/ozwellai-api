@@ -189,3 +189,40 @@ export function validateAuth(authorization: string | undefined): boolean {
   const token = authorization.substring(7);
   return token.length > 0; // Accept any non-empty token for testing
 }
+
+const DEFAULT_LLAMA_MODELS = ['llama3'];
+
+export function getLlamaConfig() {
+  const baseUrl = process.env.LLAMA_BASE_URL ?? 'http://localhost:11434/v1';
+  const apiKey = process.env.LLAMA_API_KEY;
+  const models = (process.env.LLAMA_MODELS ?? '')
+    .split(',')
+    .map(model => model.trim())
+    .filter(model => model.length > 0);
+
+  return {
+    baseUrl,
+    apiKey,
+    models: models.length > 0 ? models : DEFAULT_LLAMA_MODELS,
+  };
+}
+
+export function buildLlamaUrl(path: string): string {
+  const { baseUrl } = getLlamaConfig();
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const normalizedPath = path.startsWith('/') ? path.substring(1) : path;
+  return new URL(normalizedPath, normalizedBase).toString();
+}
+
+export function buildLlamaHeaders(): Record<string, string> {
+  const { apiKey } = getLlamaConfig();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  return headers;
+}

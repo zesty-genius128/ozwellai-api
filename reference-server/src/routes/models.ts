@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { validateAuth, createError } from '../util';
+import { validateAuth, createError, getLlamaConfig } from '../util';
 
 const modelsRoute: FastifyPluginAsync = async (fastify) => {
   // GET /v1/models
@@ -42,32 +42,13 @@ const modelsRoute: FastifyPluginAsync = async (fastify) => {
     }
 
     // Return hardcoded list of models
-    const models = [
-      {
-        id: 'gpt-4o',
-        object: 'model' as const,
-        created: 1677610602,
-        owned_by: 'ozwellai',
-      },
-      {
-        id: 'gpt-4o-mini',
-        object: 'model' as const,
-        created: 1677610602,
-        owned_by: 'ozwellai',
-      },
-      {
-        id: 'text-embedding-3-small',
-        object: 'model' as const,
-        created: 1677610602,
-        owned_by: 'ozwellai',
-      },
-      {
-        id: 'text-embedding-3-large',
-        object: 'model' as const,
-        created: 1677610602,
-        owned_by: 'ozwellai',
-      },
-    ];
+    const { models: configuredModels } = getLlamaConfig();
+    const models = configuredModels.map(modelId => ({
+      id: modelId,
+      object: 'model' as const,
+      created: 1677610602,
+      owned_by: 'llama',
+    }));
 
     // Add OpenAI-compatible headers
     reply.headers({

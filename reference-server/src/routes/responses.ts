@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { validateAuth, createError, SimpleTextGenerator, generateId, countTokens } from '../util';
+import { validateAuth, createError, SimpleTextGenerator, generateId, countTokens, getLlamaConfig } from '../util';
 
 const responsesRoute: FastifyPluginAsync = async (fastify) => {
   // POST /v1/responses
@@ -34,7 +34,7 @@ const responsesRoute: FastifyPluginAsync = async (fastify) => {
     const { model, input, stream = false, max_tokens = 150, temperature = 0.7 } = body;
 
     // Validate model
-    const supportedModels = ['gpt-4o', 'gpt-4o-mini'];
+    const { models: supportedModels } = getLlamaConfig();
     if (!supportedModels.includes(model)) {
       reply.code(400);
       return createError(`Model '${model}' not found`, 'invalid_request_error', 'model');

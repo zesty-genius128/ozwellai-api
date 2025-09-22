@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
-import { validateAuth, createError, SimpleTextGenerator, generateId, countTokens } from '../util';
+import { Readable } from 'stream';
+import { validateAuth, createError, getLlamaConfig, buildLlamaHeaders, buildLlamaUrl } from '../util';
 
 const chatRoute: FastifyPluginAsync = async (fastify) => {
   // POST /v1/chat/completions
@@ -43,115 +44,99 @@ const chatRoute: FastifyPluginAsync = async (fastify) => {
     const body = request.body as any;
     const { model, messages, stream = false, max_tokens = 150, temperature = 0.7 } = body;
 
-    // Validate model
-    const supportedModels = ['gpt-4o', 'gpt-4o-mini'];
+    // Validate model against configured list
+    const { models: supportedModels } = getLlamaConfig();
     if (!supportedModels.includes(model)) {
       reply.code(400);
       return createError(`Model '${model}' not found`, 'invalid_request_error', 'model');
     }
 
-    // Create prompt from messages
-    const prompt = messages.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n');
-    
-    const requestId = generateId('chatcmpl');
-    const created = Math.floor(Date.now() / 1000);
+    const llamaRequestBody: Record<string, unknown> = {
+      model,
+      messages,
+    };
 
-    // Add OpenAI-compatible headers
-    reply.headers({
-      'x-request-id': `req_${Date.now()}`,
-      'openai-processing-ms': '150',
-      'openai-version': '2020-10-01',
-    });
-
-    if (stream) {
-      // Streaming response
-      reply.type('text/event-stream');
-      reply.headers({
-        'cache-control': 'no-cache',
-        'connection': 'keep-alive',
-      });
-
-      const generator = SimpleTextGenerator.generateStream(prompt, max_tokens);
-      
-      // Send initial chunk with role
-      const initialChunk = {
-        id: requestId,
-        object: 'chat.completion.chunk' as const,
-        created,
-        model,
-        choices: [{
-          index: 0,
-          delta: { role: 'assistant' },
-          finish_reason: null,
-        }],
-      };
-      reply.raw.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
-
-      // Send content chunks
-      for (const token of generator) {
-        const chunk = {
-          id: requestId,
-          object: 'chat.completion.chunk' as const,
-          created,
-          model,
-          choices: [{
-            index: 0,
-            delta: { content: token },
-            finish_reason: null,
-          }],
-        };
-        reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`);
-        
-        // Add small delay to simulate streaming
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
-      // Send final chunk
-      const finalChunk = {
-        id: requestId,
-        object: 'chat.completion.chunk' as const,
-        created,
-        model,
-        choices: [{
-          index: 0,
-          delta: {},
-          finish_reason: 'stop' as const,
-        }],
-      };
-      reply.raw.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
-      reply.raw.write('data: [DONE]\n\n');
-      reply.raw.end();
-      return;
+    if (typeof stream === 'boolean') {
+      llamaRequestBody.stream = stream;
+    }
+    if (typeof max_tokens === 'number') {
+      llamaRequestBody.max_tokens = max_tokens;
+    }
+    if (typeof temperature === 'number') {
+      llamaRequestBody.temperature = temperature;
     }
 
-    // Non-streaming response
-    const content = SimpleTextGenerator.generate(prompt, max_tokens, temperature);
-    const promptTokens = countTokens(prompt);
-    const completionTokens = countTokens(content);
+    let llamaResponse: globalThis.Response;
+    try {
+      llamaResponse = await fetch(buildLlamaUrl('/chat/completions'), {
+        method: 'POST',
+        headers: buildLlamaHeaders(),
+        body: JSON.stringify(llamaRequestBody),
+      });
+    } catch (error) {
+      request.log.error({ err: error }, 'Failed to reach Llama backend');
+      reply.code(502);
+      return createError('Failed to reach Llama backend', 'server_error');
+    }
 
-    return {
-      id: requestId,
-      object: 'chat.completion' as const,
-      created,
-      model,
-      choices: [{
-        index: 0,
-        message: {
-          role: 'assistant' as const,
-          content,
-          name: undefined,
-          function_call: undefined,
-          tool_calls: undefined,
-          tool_call_id: undefined,
-        },
-        finish_reason: 'stop' as const,
-      }],
-      usage: {
-        prompt_tokens: promptTokens,
-        completion_tokens: completionTokens,
-        total_tokens: promptTokens + completionTokens,
-      },
-    };
+    if (stream) {
+      if (!llamaResponse.ok) {
+        const errorText = await llamaResponse.text();
+        reply.code(llamaResponse.status);
+        try {
+          return JSON.parse(errorText);
+        } catch {
+          return createError(errorText || 'Llama streaming request failed', 'server_error');
+        }
+      }
+
+      reply.code(llamaResponse.status);
+      llamaResponse.headers.forEach((value, key) => {
+        if (key.toLowerCase() !== 'content-length') {
+          reply.header(key, value);
+        }
+      });
+
+      const streamBody = llamaResponse.body;
+      if (!streamBody) {
+        reply.code(502);
+        return createError('Llama backend returned empty stream', 'server_error');
+      }
+
+      const nodeStream = typeof (streamBody as any).pipe === 'function'
+        ? (streamBody as unknown as NodeJS.ReadableStream)
+        : Readable.fromWeb(streamBody as any);
+
+      return reply.send(nodeStream);
+    }
+
+    const responseText = await llamaResponse.text();
+    let responseJson: unknown;
+    if (responseText.length > 0) {
+      try {
+        responseJson = JSON.parse(responseText);
+      } catch (error) {
+        request.log.error({ err: error, responseText }, 'Invalid JSON from Llama backend');
+        reply.code(502);
+        return createError('Invalid response from Llama backend', 'server_error');
+      }
+    }
+
+    reply.code(llamaResponse.status);
+    llamaResponse.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'content-length') {
+        reply.header(key, value);
+      }
+    });
+
+    if (!llamaResponse.ok) {
+      if (responseJson) {
+        return responseJson;
+      }
+      return createError('Llama request failed', 'server_error');
+    }
+
+    return responseJson ?? {};
   });
 };
 
