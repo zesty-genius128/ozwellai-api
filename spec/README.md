@@ -1,6 +1,6 @@
 # Ozwell API Specification
 
-Read the [TypeScript-First](TypeScript-First.md) Approach.
+Read the [Zod-First](Zod-First-Architecture.md) Approach.
 
 
 This directory contains the canonical Zod-based API specification for the Ozwell API.
