@@ -1,5 +1,8 @@
 # Ozwell API Specification
 
+Read the [Zod-First](Zod-First-Architecture.md) Approach.
+
+
 This directory contains the canonical Zod-based API specification for the Ozwell API.
 
 ## Structure
@@ -108,3 +111,7 @@ const client = new OzwellAI({
 - **Responses**: `ResponseRequestSchema`, `ResponseSchema` (custom endpoint)
 
 All schemas export both the Zod schema and corresponding TypeScript types.
+
+# History on why we chose this workflow
+
+https://chatgpt.com/share/68d47683-1e00-8004-9936-c5b05e2bab7a
