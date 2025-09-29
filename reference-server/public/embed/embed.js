@@ -8,8 +8,8 @@
     ready: false,
     pending: new Map(),
     requestHandler: null,
-    requestCounter: 1,
     readyResolvers: [],
+    sessionId: null,
   };
 
   function createIframe(options = {}) {
@@ -61,10 +61,14 @@
     }
 
     if (result.content) {
-      return {
+      const normalized = {
         content: result.content,
         metadata: result.metadata || {},
       };
+      if (result.usage) {
+        normalized.usage = result.usage;
+      }
+      return normalized;
     }
 
     return {
@@ -73,70 +77,221 @@
     };
   }
 
-  function sendToIframe(payload) {
+  function postToIframe(payload, overrideOrigin) {
     if (!state.iframe || !state.iframe.contentWindow) return;
-    state.iframe.contentWindow.postMessage(payload, state.iframeOrigin);
+    const targetOrigin = overrideOrigin || state.iframeOrigin || '*';
+    state.iframe.contentWindow.postMessage(payload, targetOrigin);
+  }
+
+  function sendToIframe(payload) {
+    postToIframe(payload);
+  }
+
+  function resetHandshake() {
+    state.ready = false;
+    state.sessionId = null;
+  }
+
+  function setReady() {
+    if (state.ready) return;
+    state.ready = true;
+    state.readyResolvers.splice(0).forEach((resolve) => resolve());
+    document.dispatchEvent(new CustomEvent('ozwell-chat-ready'));
+  }
+
+  function sendServerHello() {
+    sendToIframe({
+      type: 'server_hello',
+      version: '1.0',
+      capabilities: {
+        model: {
+          request: {
+            stream: false,
+          },
+        },
+        tools: {
+          call: true,
+        },
+      },
+    });
+  }
+
+  function sendSetupRequired() {
+    resetHandshake();
+    sendToIframe({ type: 'MCP_SETUP_REQUIRED' });
+  }
+
+  function sendSetupHandshakeReply(nonce) {
+    sendToIframe({
+      type: 'MCP_SETUP_HANDSHAKE_REPLY',
+      nonce,
+    });
+  }
+
+  function sendTransportHandshakeReply() {
+    const sessionId = state.sessionId || `session-${Date.now()}`;
+    state.sessionId = sessionId;
+    sendToIframe({
+      type: 'MCP_TRANSPORT_HANDSHAKE_REPLY',
+      protocolVersion: '1.0',
+      sessionId,
+    });
+  }
+
+  function sendJsonRpcResponse(id, result) {
+    sendToIframe({
+      type: 'MCP_MESSAGE',
+      payload: {
+        jsonrpc: '2.0',
+        id,
+        result,
+      },
+    });
+  }
+
+  function sendJsonRpcError(id, code, message) {
+    sendToIframe({
+      type: 'MCP_MESSAGE',
+      payload: {
+        jsonrpc: '2.0',
+        id,
+        error: {
+          code,
+          message,
+        },
+      },
+    });
+  }
+
+  function handleWidgetResponse(payload) {
+    const id = payload.id != null ? String(payload.id) : null;
+    if (!id) return;
+    const pending = state.pending.get(id);
+    if (!pending) return;
+    state.pending.delete(id);
+
+    if (payload.error) {
+      pending.reject(new Error(payload.error.message || 'Widget request failed'));
+    } else {
+      pending.resolve(payload.result);
+    }
+  }
+
+  function handleWidgetRequest(payload) {
+    if (!payload || typeof payload !== 'object') return;
+
+    const id = payload.id != null ? String(payload.id) : null;
+    const method = typeof payload.method === 'string' ? payload.method : null;
+    if (!id || !method) {
+      if (id) {
+        sendJsonRpcError(id, -32600, 'Invalid request');
+      }
+      return;
+    }
+
+    let tool = method;
+    let args = payload.params || {};
+
+    if (method === 'tools/call') {
+      tool = payload.params?.name || 'unknown';
+      args = payload.params?.arguments || {};
+    }
+
+    const handler = state.requestHandler || defaultRequestHandler;
+    const requestForHandler = {
+      id,
+      method,
+      params: payload.params || {},
+      tool,
+      args,
+      raw: payload,
+    };
+
+    Promise.resolve()
+      .then(() => handler(requestForHandler))
+      .then((response) => {
+        if (response && typeof response === 'object' && response.jsonrpc === '2.0') {
+          sendToIframe({ type: 'MCP_MESSAGE', payload: response });
+          return;
+        }
+
+        const normalized = normalizeResult(response);
+        sendJsonRpcResponse(id, normalized);
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : 'Tool call failed';
+        sendJsonRpcError(id, -32003, message);
+      });
+  }
+
+  function handleClientHello(event) {
+    state.iframeOrigin = event.origin || '*';
+    sendServerHello();
+    sendSetupRequired();
+  }
+
+  function handleSetupMessage(message) {
+    switch (message.type) {
+      case 'MCP_SETUP_HANDSHAKE': {
+        const nonce = message.nonce;
+        if (!nonce) return;
+        sendSetupHandshakeReply(nonce);
+        break;
+      }
+      case 'MCP_SETUP_COMPLETE': {
+        state.sessionId = message.sessionId || state.sessionId;
+        sendTransportHandshakeReply();
+        break;
+      }
+      case 'MCP_TRANSPORT_ACCEPTED': {
+        if (message.sessionId) {
+          state.sessionId = message.sessionId;
+        }
+        setReady();
+        break;
+      }
+      case 'MCP_TRANSPORT_HANDSHAKE': {
+        // Provide an idempotent reply for eager clients.
+        state.sessionId = message.sessionId || state.sessionId;
+        sendTransportHandshakeReply();
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   function handleIframeMessage(event) {
-    if (!state.iframe) return;
-    if (event.source !== state.iframe.contentWindow) return;
-
+    if (!state.iframe || event.source !== state.iframe.contentWindow) return;
     const data = event.data;
     if (!data || typeof data !== 'object') return;
 
     switch (data.type) {
-      case 'OZ_CHAT_HELLO': {
-        state.iframeOrigin = event.origin || '*';
-        state.ready = true;
-        sendToIframe({
-          type: 'OZ_CHAT_ACK',
-          protocolVersion: '1.0',
-          capabilities: {
-            tools: {
-              call: true,
-            },
-          },
-        });
-        state.readyResolvers.forEach((resolve) => resolve());
-        state.readyResolvers = [];
-        document.dispatchEvent(new CustomEvent('ozwell-chat-ready'));
+      case 'client_hello':
+        handleClientHello(event);
         break;
-      }
-
-      case 'OZ_CHAT_REQUEST': {
-        const request = data.request;
-        if (!request || !request.id) {
-          console.warn('[OzwellChat] Received invalid request payload:', data);
-          return;
+      case 'MCP_SETUP_HANDSHAKE':
+      case 'MCP_SETUP_COMPLETE':
+      case 'MCP_TRANSPORT_ACCEPTED':
+      case 'MCP_TRANSPORT_HANDSHAKE':
+        handleSetupMessage(data);
+        break;
+      case 'MCP_QUERY_PHASE':
+        sendToIframe({ type: 'MCP_PHASE', phase: state.ready ? 'transport' : 'setup' });
+        if (!state.ready) sendSetupRequired();
+        break;
+      case 'MCP_MESSAGE':
+        if (data.payload && typeof data.payload === 'object') {
+          if (data.payload.method) {
+            handleWidgetRequest(data.payload);
+          } else {
+            handleWidgetResponse(data.payload);
+          }
         }
-        const handler = state.requestHandler || defaultRequestHandler;
-        Promise.resolve(handler(request))
-          .then((response) => {
-            const normalized = normalizeResult(response);
-            sendToIframe({
-              type: 'OZ_CHAT_RESPONSE',
-              id: request.id,
-              result: normalized,
-            });
-          })
-          .catch((error) => {
-            sendToIframe({
-              type: 'OZ_CHAT_RESPONSE',
-              id: request.id,
-              error: {
-                message: error && error.message ? error.message : 'Tool call failed',
-              },
-            });
-          });
         break;
-      }
-
-      case 'OZ_CHAT_LOG': {
-        console.log('[OzwellChat][Iframe]', data.message);
+      case 'MCP_WIDGET_LOG':
+        console.log('[OzwellChat][Widget]', data.message);
         break;
-      }
-
       default:
         break;
     }
@@ -158,25 +313,12 @@
   ensureListeners();
 
   const api = {
-    /**
-     * Mounts the chat widget. Call this if you need to control where the iframe is injected.
-     */
     mount(options = {}) {
       return mountIframe(options);
     },
-
-    /**
-     * Registers a handler for incoming tool calls/model requests.
-     * The handler receives an object: { id, tool, args }
-     * Return a string or { content, metadata } to send back to the widget.
-     */
     onRequest(handler) {
       state.requestHandler = handler;
     },
-
-    /**
-     * Resolves once the iframe has completed its handshake with the parent.
-     */
     ready() {
       if (state.ready) return Promise.resolve();
       return new Promise((resolve) => {
@@ -185,7 +327,6 @@
     },
   };
 
-  // Auto-mount on load
   document.addEventListener('DOMContentLoaded', () => {
     mountIframe();
   });

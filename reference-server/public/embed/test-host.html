@@ -103,6 +103,9 @@
       const logEl = document.getElementById('host-log');
       const pending = new Map();
       let ws;
+      let transportReady = false;
+      let lastNonce = null;
+      let sessionId = null;
 
       function log(message) {
         const time = new Date().toLocaleTimeString();
@@ -131,6 +134,91 @@
         log(`Manual command: ${value}`);
       }
 
+      function beginSetup() {
+        if (!ws) return;
+        lastNonce = `nonce-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        log('Sending MCP_SETUP_HANDSHAKE.');
+        ws.send(JSON.stringify({
+          type: 'MCP_SETUP_HANDSHAKE',
+          nonce: lastNonce,
+          version: '1.0',
+        }));
+      }
+
+      function handleMcpFrame(message) {
+        if (!message || typeof message !== 'object') return;
+
+        switch (message.type) {
+          case 'MCP_SETUP_HANDSHAKE_REPLY':
+            if (message.nonce !== lastNonce) {
+              log('Received setup reply with unexpected nonce.');
+              return;
+            }
+            sessionId = `session-${Date.now()}`;
+            log('Setup handshake acknowledged. Sending MCP_SETUP_COMPLETE.');
+            ws.send(JSON.stringify({
+              type: 'MCP_SETUP_COMPLETE',
+              sessionId,
+            }));
+            break;
+
+          case 'MCP_SETUP_REQUIRED':
+            log('Host requested setup. Restarting handshake.');
+            beginSetup();
+            break;
+
+          case 'MCP_TRANSPORT_HANDSHAKE_REPLY':
+            sessionId = message.sessionId || sessionId || `session-${Date.now()}`;
+            transportReady = true;
+            log('Transport handshake complete. Sending MCP_TRANSPORT_ACCEPTED.');
+            ws.send(JSON.stringify({
+              type: 'MCP_TRANSPORT_ACCEPTED',
+              sessionId,
+            }));
+            break;
+
+          case 'server_hello':
+            log('Received server_hello from MCP host.');
+            break;
+
+          case 'MCP_MESSAGE': {
+            const payload = message.payload;
+            if (!payload || typeof payload !== 'object') return;
+            const responseId = payload.id != null ? String(payload.id) : null;
+            if (!responseId) {
+              log('Received MCP_MESSAGE without id.');
+              return;
+            }
+            const entry = pending.get(responseId);
+            if (!entry) {
+              log(`No pending entry for response id ${responseId}`);
+              return;
+            }
+            pending.delete(responseId);
+            if (payload.error) {
+              entry.reject(new Error(payload.error.message || 'Host error'));
+            } else {
+              entry.resolve(payload);
+            }
+            break;
+          }
+
+          case 'error':
+            log(`Host returned error: ${message.error?.message || 'Unknown error'}`);
+            if (message.id != null) {
+              const entry = pending.get(String(message.id));
+              if (entry) {
+                pending.delete(String(message.id));
+                entry.reject(new Error(message.error?.message || 'Host error'));
+              }
+            }
+            break;
+
+          default:
+            break;
+        }
+      }
+
       function connectToMcpHost() {
         if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
           return;
@@ -141,8 +229,9 @@
         ws = new WebSocket(socketUrl);
 
         ws.addEventListener('open', () => {
-          log('Connected to MCP host, sending client_hello.');
-          ws.send(JSON.stringify({ type: 'client_hello', version: '1.0' }));
+          log('Connected to MCP host. Beginning setup handshake.');
+          transportReady = false;
+          beginSetup();
         });
 
         ws.addEventListener('message', (event) => {
@@ -153,37 +242,12 @@
             log(`Received non-JSON message from host: ${event.data}`);
             return;
           }
-
-          if (message.type === 'server_hello') {
-            log('Received server_hello from MCP host.');
-            return;
-          }
-
-          if (message.type === 'model_response' || message.type === 'tool_response') {
-            const entry = pending.get(message.id);
-            if (entry) {
-              pending.delete(message.id);
-              if (message.error) {
-                entry.reject(new Error(message.error.message || 'Host error'));
-              } else {
-                entry.resolve(message.response || message.result);
-              }
-            }
-            return;
-          }
-
-          if (message.type === 'error') {
-            log(`Host returned error: ${message.error?.message || 'Unknown error'}`);
-            const entry = pending.get(message.id);
-            if (entry) {
-              pending.delete(message.id);
-              entry.reject(new Error(message.error?.message || 'Host error'));
-            }
-          }
+          handleMcpFrame(message);
         });
 
         ws.addEventListener('close', () => {
           log('MCP host connection closed. Retrying in 3s...');
+          transportReady = false;
           setTimeout(connectToMcpHost, 3000);
         });
 
@@ -192,18 +256,26 @@
         });
       }
 
-      function sendToHost(payload) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          return Promise.reject(new Error('MCP host not connected yet.'));
+      function sendToHost(jsonRpcPayload) {
+        if (!ws || ws.readyState !== WebSocket.OPEN || !transportReady) {
+          return Promise.reject(new Error('MCP host not ready yet.'));
         }
+
+        const id = jsonRpcPayload.id != null ? String(jsonRpcPayload.id) : `auto-${Date.now()}`;
+        jsonRpcPayload.id = id;
+
+        const frame = {
+          type: 'MCP_MESSAGE',
+          payload: jsonRpcPayload,
+        };
 
         return new Promise((resolve, reject) => {
           const timeout = window.setTimeout(() => {
-            pending.delete(payload.id);
+            pending.delete(id);
             reject(new Error('MCP host request timed out'));
           }, 20000);
 
-          pending.set(payload.id, {
+          pending.set(id, {
             resolve: (value) => {
               clearTimeout(timeout);
               resolve(value);
@@ -214,7 +286,7 @@
             },
           });
 
-          ws.send(JSON.stringify(payload));
+          ws.send(JSON.stringify(frame));
         });
       }
 
@@ -239,34 +311,31 @@
             return `Name updated to ${args?.value || 'Visitor'}`;
           }
 
+          const idString = typeof id === 'string' ? id : `req-${id}`;
+
           if (tool === 'model_request') {
-            const idString = typeof id === 'string' ? id : `req-${id}`;
-            const payload = {
-              type: 'model_request',
+            const response = await sendToHost({
+              jsonrpc: '2.0',
               id: idString,
+              method: 'model_request',
               params: {
                 prompt: args?.prompt || '',
                 model: args?.model,
               },
-            };
-
-            const response = await sendToHost(payload);
-            return response;
+            });
+            return response.result || response;
           }
 
-          // Unknown tool: pass through to MCP host for awareness
-          const idString = typeof id === 'string' ? id : `req-${id}`;
-          const payload = {
-            type: 'tools/call',
+          const response = await sendToHost({
+            jsonrpc: '2.0',
             id: idString,
+            method: 'tools/call',
             params: {
               name: tool,
               arguments: args || {},
             },
-          };
-
-          const response = await sendToHost(payload);
-          return response;
+          });
+          return response.result || response;
         });
       });
     </script>

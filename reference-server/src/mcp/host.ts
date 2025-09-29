@@ -1,195 +1,217 @@
 import { FastifyInstance } from 'fastify';
-import websocket from '@fastify/websocket';
-import type { SocketStream } from '@fastify/websocket';
+import websocket, { SocketStream } from '@fastify/websocket';
 import OzwellAI from 'ozwellai';
 
 type JsonRecord = Record<string, unknown>;
-
-interface ClientHelloMessage {
-  type: 'client_hello';
-  version: string;
-  capabilities?: JsonRecord;
-}
-
-interface ModelRequestMessage {
-  type: 'model_request';
-  id: string | number;
-  model?: string;
-  params: {
-    model?: string;
-    prompt?: string;
-    system?: string;
-    messages?: Array<{ role: string; content: string }>;
-    stream?: boolean;
-  } & JsonRecord;
-}
-
-interface ToolCallMessage {
-  type: 'tools/call';
-  id: string | number;
-  params: {
-    name: string;
-    arguments?: JsonRecord;
-  } & JsonRecord;
-}
-
-type IncomingMessage = ClientHelloMessage | ModelRequestMessage | ToolCallMessage | JsonRecord;
+type JsonRpcMessage = JsonRecord;
 
 const DEFAULT_MODEL = (process.env.MCP_DEFAULT_MODEL || 'llama3').trim();
-const rawApiKey = (process.env.MCP_API_KEY || 'ollama').trim();
-const explicitBaseUrl = process.env.MCP_BASE_URL?.trim();
+const MCP_API_KEY = (process.env.MCP_API_KEY || 'ollama').trim();
+const MCP_BASE_URL = process.env.MCP_BASE_URL?.trim();
 
-const resolvedBaseUrl = explicitBaseUrl ||
-  (rawApiKey.toLowerCase() === 'ollama' ? 'http://127.0.0.1:11434' : undefined);
+const resolvedBaseUrl = MCP_BASE_URL || (MCP_API_KEY.toLowerCase() === 'ollama' ? 'http://127.0.0.1:11434' : undefined);
 
 const ozwellClient = new OzwellAI({
-  apiKey: rawApiKey,
+  apiKey: MCP_API_KEY,
   ...(resolvedBaseUrl ? { baseURL: resolvedBaseUrl } : {}),
 });
 
 console.log('[MCP] Host configuration', {
   defaultModel: DEFAULT_MODEL,
   baseURL: resolvedBaseUrl || 'https://api.ozwell.ai',
-  apiKey: rawApiKey.toLowerCase() === 'ollama' ? 'ollama (local)' : '[custom]'
+  apiKey: MCP_API_KEY.toLowerCase() === 'ollama' ? 'ollama (local)' : '[custom]'
 });
 
 function send(socket: SocketStream['socket'], payload: JsonRecord) {
   socket.send(JSON.stringify(payload));
 }
 
-async function handleModelRequest(socket: SocketStream['socket'], message: ModelRequestMessage) {
-  const requestId = message.id;
-  const params = message.params || {};
-  const model = params.model || message.model || DEFAULT_MODEL;
+function sendSetupRequired(socket: SocketStream['socket']) {
+  send(socket, {
+    type: 'MCP_SETUP_REQUIRED',
+  });
+}
 
-  const prompt = params.prompt as string | undefined;
-  const systemPrompt = params.system as string | undefined;
-  const messages = params.messages as Array<{ role: string; content: string }> | undefined;
+function handleSetup(socket: SocketStream['socket'], message: JsonRecord) {
+  if (message.type === 'MCP_SETUP_HANDSHAKE') {
+    send(socket, {
+      type: 'MCP_SETUP_HANDSHAKE_REPLY',
+      nonce: message.nonce,
+    });
+  }
 
-  const chatMessages = messages && messages.length > 0
-    ? messages
-    : [
-        { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-        { role: 'user', content: prompt || '' },
-      ];
+  if (message.type === 'MCP_SETUP_COMPLETE') {
+    send(socket, {
+      type: 'MCP_TRANSPORT_HANDSHAKE_REPLY',
+      protocolVersion: '1.0',
+      sessionId: message.sessionId || `session-${Date.now()}`,
+    });
+  }
+}
+
+async function forwardModelRequest(socket: SocketStream['socket'], request: JsonRpcMessage) {
+  const id = request.id;
+  const params = (request.params || {}) as JsonRecord;
+  const model = (params.model as string) || DEFAULT_MODEL;
+
+  const prompt = (params.prompt as string) || '';
+  const systemPrompt = (params.system as string) || 'You are a helpful assistant.';
+  const messages = (params.messages as Array<{ role: string; content: string }>) || [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: prompt },
+  ];
 
   try {
     const response = await ozwellClient.createChatCompletion({
       model,
-      messages: chatMessages,
+      messages,
       stream: false,
     });
 
     const content = response.choices?.[0]?.message?.content ?? '';
 
     send(socket, {
-      type: 'model_response',
-      id: requestId,
-      response: {
-        content: [{ type: 'text', text: content }],
-        metadata: {
-          model,
+      type: 'MCP_MESSAGE',
+      payload: {
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [{ type: 'text', text: content }],
+          metadata: {
+            model,
+          },
+          usage: response.usage,
         },
-        usage: response.usage,
       },
-      error: null,
     });
   } catch (error) {
-    const messageText = error instanceof Error ? error.message : 'Model request failed';
     console.error('[MCP] model_request failed:', error);
     send(socket, {
-      type: 'model_response',
-      id: requestId,
-      response: null,
-      error: {
-        code: 'model_error',
-        message: messageText,
+      type: 'MCP_MESSAGE',
+      payload: {
+        jsonrpc: '2.0',
+        id,
+        error: {
+          code: -32001,
+          message: error instanceof Error ? error.message : 'Model request failed',
+        },
       },
     });
   }
 }
 
-function handleToolCall(socket: SocketStream['socket'], message: ToolCallMessage) {
-  const { id, params } = message;
-  const toolName = params?.name;
-  const args = params?.arguments || {};
+function forwardToolCall(socket: SocketStream['socket'], request: JsonRpcMessage) {
+  const id = request.id;
+  const params = (request.params || {}) as JsonRecord;
+  const name = (params.name as string) || 'unknown';
+  const args = (params.arguments || {}) as JsonRecord;
 
   send(socket, {
-    type: 'tool_response',
-    id,
-    result: {
-      content: [
-        {
-          type: 'text',
-          text: `Tool ${toolName || 'unknown'} acknowledged with args ${JSON.stringify(args)}`,
-        },
-      ],
-      metadata: {},
+    type: 'MCP_MESSAGE',
+    payload: {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [{ type: 'text', text: `Tool ${name} acknowledged with args ${JSON.stringify(args)}` }],
+        metadata: {},
+      },
     },
-    error: null,
+  });
+}
+
+function handleTransportMessage(socket: SocketStream['socket'], payload: JsonRpcMessage) {
+  const method = payload.method as string;
+
+  if (method === 'model_request') {
+    forwardModelRequest(socket, payload);
+    return;
+  }
+
+  if (method === 'tools/call') {
+    forwardToolCall(socket, payload);
+    return;
+  }
+
+  // Unknown method -> echo error
+  send(socket, {
+    type: 'MCP_MESSAGE',
+    payload: {
+      jsonrpc: '2.0',
+      id: payload.id,
+      error: {
+        code: -32002,
+        message: `Unsupported method: ${method}`,
+      },
+    },
   });
 }
 
 function handleMessage(socket: SocketStream['socket'], raw: string) {
-  let parsed: IncomingMessage;
+  let message: JsonRecord;
 
   try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
+    message = JSON.parse(raw);
+  } catch {
     send(socket, {
-      type: 'error',
-      error: {
-        code: 'invalid_json',
-        message: 'Unable to parse JSON payload',
+      type: 'MCP_MESSAGE',
+      payload: {
+        jsonrpc: '2.0',
+        error: {
+          code: -32700,
+          message: 'Invalid JSON in WebSocket frame',
+        },
       },
     });
     return;
   }
 
-  if (!parsed || typeof parsed !== 'object') {
+  if (message.type === 'client_hello') {
+    send(socket, {
+      type: 'server_hello',
+      version: (message.version as string) || '1.0',
+      capabilities: {
+        model: { request: { stream: false } },
+        tools: { call: true },
+      },
+    });
+    sendSetupRequired(socket);
     return;
   }
 
-  switch (parsed.type) {
-    case 'client_hello': {
-      send(socket, {
-        type: 'server_hello',
-        version: parsed.version || '1.0',
-        capabilities: {
-          model: {
-            request: {
-              stream: false,
-            },
-          },
-          tools: {
-            call: true,
-          },
-        },
-      });
-      break;
-    }
-
-    case 'model_request': {
-      handleModelRequest(socket, parsed as ModelRequestMessage);
-      break;
-    }
-
-    case 'tools/call': {
-      handleToolCall(socket, parsed as ToolCallMessage);
-      break;
-    }
-
-    default: {
-      send(socket, {
-        type: 'error',
-        error: {
-          code: 'unsupported_message',
-          message: `Unsupported MCP message type: ${String(parsed.type)}`,
-        },
-      });
-      break;
-    }
+  if (typeof message.type === 'string' && message.type.startsWith('MCP_SETUP_')) {
+    handleSetup(socket, message);
+    return;
   }
+
+  if (message.type === 'MCP_QUERY_PHASE') {
+    send(socket, { type: 'MCP_PHASE', phase: 'transport' });
+    return;
+  }
+
+  if (message.type === 'MCP_TRANSPORT_HANDSHAKE') {
+    send(socket, {
+      type: 'MCP_TRANSPORT_HANDSHAKE_REPLY',
+      protocolVersion: '1.0',
+      sessionId: message.sessionId || `session-${Date.now()}`,
+    });
+    return;
+  }
+
+  if (message.type === 'MCP_TRANSPORT_ACCEPTED') {
+    // client acknowledged transport
+    return;
+  }
+
+  if (message.type === 'MCP_MESSAGE') {
+    const payload = message.payload as JsonRpcMessage | undefined;
+    if (payload) {
+      handleTransportMessage(socket, payload);
+    }
+    return;
+  }
+
+  // Everything else -> request setup phase
+  sendSetupRequired(socket);
 }
 
 export async function registerMcpHost(fastify: FastifyInstance) {

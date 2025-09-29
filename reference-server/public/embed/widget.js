@@ -4,6 +4,8 @@ const state = {
   pending: new Map(),
   messageId: 1,
   handshakeTimeout: null,
+  lastNonce: null,
+  sessionId: null,
 };
 
 const statusEl = document.getElementById('status');
@@ -20,84 +22,197 @@ function addMessage(role, text) {
 }
 
 function log(message) {
-  window.parent.postMessage({ type: 'OZ_CHAT_LOG', message }, state.parentOrigin);
+  window.parent.postMessage({ type: 'MCP_WIDGET_LOG', message }, state.parentOrigin);
 }
 
-function sendHandshake() {
-  window.parent.postMessage(
-    {
-      type: 'OZ_CHAT_HELLO',
-      protocolVersion: '1.0',
-    },
-    '*'
-  );
+function send(payload) {
+  window.parent.postMessage(payload, state.parentOrigin);
+}
 
+function scheduleHelloRetry() {
   state.handshakeTimeout = window.setTimeout(() => {
-    statusEl.textContent = 'Connection timeout. Retrying...';
-    sendHandshake();
+    if (state.ready) return;
+    statusEl.textContent = 'Connection timeout. Retrying handshake...';
+    sendClientHello();
   }, 5000);
 }
 
-function handleAck(event) {
-  clearTimeout(state.handshakeTimeout);
+function sendClientHello() {
+  window.clearTimeout(state.handshakeTimeout);
+  state.parentOrigin = '*';
+  send({
+    type: 'client_hello',
+    version: '1.0',
+    capabilities: {
+      model: { request: { stream: false } },
+      tools: { call: true },
+    },
+  });
+  scheduleHelloRetry();
+}
+
+function beginSetup() {
+  state.lastNonce = `nonce-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  log('Sending MCP_SETUP_HANDSHAKE to parent.');
+  send({
+    type: 'MCP_SETUP_HANDSHAKE',
+    nonce: state.lastNonce,
+    version: '1.0',
+  });
+}
+
+function completeSetup(sessionId) {
+  state.sessionId = sessionId || state.sessionId || `session-${Date.now()}`;
+  log('Transport handshake complete. Sending MCP_TRANSPORT_ACCEPTED.');
+  send({
+    type: 'MCP_TRANSPORT_ACCEPTED',
+    sessionId: state.sessionId,
+  });
   state.ready = true;
-  state.parentOrigin = event.origin || '*';
+  window.clearTimeout(state.handshakeTimeout);
   statusEl.textContent = 'Connected to host';
   addMessage('system', 'Connected to host');
 }
 
-function handleResponse(message) {
-  const pending = state.pending.get(message.id);
+function handleJsonRpcResponse(payload) {
+  const responseId = payload.id != null ? String(payload.id) : null;
+  if (!responseId) {
+    log('Received MCP_MESSAGE response without id.');
+    return;
+  }
+
+  const pending = state.pending.get(responseId);
   if (!pending) {
-    console.warn('[Widget] Unknown response id:', message.id);
-    return;
-  }
-  state.pending.delete(message.id);
-
-  if (message.error) {
-    pending.reject(new Error(message.error.message || 'Tool call failed'));
+    log(`Unknown response id ${responseId}`);
     return;
   }
 
-  pending.resolve(message.result);
+  state.pending.delete(responseId);
+
+  if (payload.error) {
+    const message = payload.error.message || 'Tool call failed';
+    pending.reject(new Error(message));
+  } else {
+    pending.resolve(payload.result);
+  }
+}
+
+function handleJsonRpcRequest(payload) {
+  if (!payload || typeof payload !== 'object') return;
+
+  const id = payload.id != null ? String(payload.id) : null;
+  if (!id || !payload.method) {
+    log('Widget received JSON-RPC request without id/method.');
+    return;
+  }
+
+  const errorFrame = (code, message) => ({
+    type: 'MCP_MESSAGE',
+    payload: {
+      jsonrpc: '2.0',
+      id,
+      error: { code, message },
+    },
+  });
+
+  if (payload.method !== 'widget/log') {
+    log(`Unsupported request method from parent: ${payload.method}`);
+  }
+
+  send(errorFrame(-32601, 'Method not supported by widget'));
+}
+
+function handleTransportFrame(message, origin) {
+  if (origin) {
+    state.parentOrigin = origin;
+  }
+
+  switch (message.type) {
+    case 'server_hello':
+      log('Received server_hello from parent host.');
+      break;
+
+    case 'MCP_SETUP_REQUIRED':
+      log('Parent requested setup handshake.');
+      if (state.pending.size) {
+        const error = new Error('Connection reset during handshake');
+        state.pending.forEach(({ reject }) => reject(error));
+        state.pending.clear();
+      }
+      state.ready = false;
+      beginSetup();
+      break;
+
+    case 'MCP_SETUP_HANDSHAKE_REPLY':
+      if (!state.lastNonce || message.nonce !== state.lastNonce) {
+        log('Received setup handshake reply with unexpected nonce.');
+        return;
+      }
+      log('Setup handshake acknowledged. Sending MCP_SETUP_COMPLETE.');
+      state.sessionId = `session-${Date.now()}`;
+      send({
+        type: 'MCP_SETUP_COMPLETE',
+        sessionId: state.sessionId,
+      });
+      break;
+
+    case 'MCP_TRANSPORT_HANDSHAKE_REPLY':
+      completeSetup(message.sessionId);
+      break;
+
+    case 'MCP_PHASE':
+      // Parent is probing for transport readiness; respond by resending handshake if needed.
+      if (!state.ready) beginSetup();
+      break;
+
+    case 'MCP_MESSAGE':
+      if (!message.payload || typeof message.payload !== 'object') return;
+      if (message.payload.method) {
+        handleJsonRpcRequest(message.payload);
+      } else {
+        handleJsonRpcResponse(message.payload);
+      }
+      break;
+
+    case 'error':
+      if (message.error?.message) {
+        log(`Received error from parent: ${message.error.message}`);
+      }
+      break;
+
+    default:
+      break;
+  }
 }
 
 window.addEventListener('message', (event) => {
   const data = event.data;
   if (!data || typeof data !== 'object') return;
 
-  switch (data.type) {
-    case 'OZ_CHAT_ACK':
-      handleAck(event);
-      break;
-    case 'OZ_CHAT_RESPONSE':
-      handleResponse(data);
-      break;
-    default:
-      break;
+  if (data.type === 'MCP_MESSAGE' || String(data.type || '').startsWith('MCP_') || data.type === 'server_hello') {
+    handleTransportFrame(data, event.origin || '*');
+    return;
+  }
+
+  if (data.type === 'client_hello') {
+    // Ignore stray client_hello echoes to avoid loops.
+    return;
   }
 });
 
-function sendRequest(tool, args) {
+function sendTransportRequest(payload) {
   if (!state.ready) {
     return Promise.reject(new Error('Not connected to host'));
   }
 
-  const id = `req-${state.messageId++}`;
-  const payload = {
-    type: 'OZ_CHAT_REQUEST',
-    request: {
-      id,
-      tool,
-      args,
-    },
-  };
+  const id = payload.id != null ? String(payload.id) : `req-${state.messageId++}`;
+  payload.id = id;
 
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       state.pending.delete(id);
       reject(new Error('Request timed out'));
-    }, 15000);
+    }, 20000);
 
     state.pending.set(id, {
       resolve: (value) => {
@@ -110,7 +225,45 @@ function sendRequest(tool, args) {
       },
     });
 
-    window.parent.postMessage(payload, state.parentOrigin);
+    send({
+      type: 'MCP_MESSAGE',
+      payload,
+    });
+  });
+}
+
+function sendRequest(tool, args) {
+  if (tool === 'model_request') {
+    const params = {
+      prompt: args?.prompt || '',
+    };
+
+    if (args?.model) {
+      params.model = args.model;
+    }
+
+    if (args?.messages) {
+      params.messages = args.messages;
+    }
+
+    if (args?.system) {
+      params.system = args.system;
+    }
+
+    return sendTransportRequest({
+      jsonrpc: '2.0',
+      method: 'model_request',
+      params,
+    });
+  }
+
+  return sendTransportRequest({
+    jsonrpc: '2.0',
+    method: 'tools/call',
+    params: {
+      name: tool,
+      arguments: args || {},
+    },
   });
 }
 
@@ -159,4 +312,4 @@ formEl.addEventListener('submit', async (event) => {
 
 addMessage('system', 'Widget loaded, waiting for host...');
 statusEl.textContent = 'Connecting to host...';
-sendHandshake();
+sendClientHello();
