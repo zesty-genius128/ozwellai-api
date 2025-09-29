@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MCP PostMessage Demo</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        padding: 32px;
+        background: #0f172a;
+        color: white;
+      }
+
+      .panel {
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 900px;
+        margin: 0 auto;
+        box-shadow: 0 30px 80px rgba(2, 6, 23, 0.4);
+        backdrop-filter: blur(12px);
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 28px;
+      }
+
+      button {
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: none;
+        background: #38bdf8;
+        color: #0f172a;
+        font-weight: 600;
+        cursor: pointer;
+        margin-right: 8px;
+      }
+
+      button.secondary {
+        background: rgba(255, 255, 255, 0.14);
+        color: white;
+      }
+
+      #host-log {
+        margin-top: 16px;
+        padding: 12px;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.6;
+        max-height: 180px;
+        overflow-y: auto;
+      }
+
+      .controls {
+        margin-bottom: 20px;
+      }
+
+      #demo-form {
+        margin-top: 24px;
+        display: flex;
+        gap: 12px;
+      }
+
+      #demo-input {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: none;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <h1>🧪 Ozwell MCP PostMessage Demo</h1>
+      <p>Type commands in the chat widget and watch the host page respond via MCP.</p>
+
+      <div class="controls">
+        <button onclick="setTheme('dark')">Set Dark Theme</button>
+        <button class="secondary" onclick="setTheme('light')">Set Light Theme</button>
+        <button class="secondary" onclick="setName('Ada Lovelace')">Set Name to Ada Lovelace</button>
+      </div>
+
+      <div id="state">
+        <p>Theme: <span id="state-theme">light</span></p>
+        <p>Name: <span id="state-name">Visitor</span></p>
+      </div>
+
+      <div id="chatbot"></div>
+
+      <div id="host-log"></div>
+
+      <form id="demo-form" onsubmit="handleManualSubmit(event)">
+        <input id="demo-input" placeholder="Type something to send to the widget" />
+        <button type="submit">Send to Widget</button>
+      </form>
+    </div>
+
+    <script src="./embed.js"></script>
+    <script>
+      const logEl = document.getElementById('host-log');
+      const pending = new Map();
+      let ws;
+
+      function log(message) {
+        const time = new Date().toLocaleTimeString();
+        const div = document.createElement('div');
+        div.textContent = `[${time}] ${message}`;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function setTheme(value) {
+        document.body.style.background = value === 'dark' ? '#0f172a' : '#f1f5f9';
+        document.body.style.color = value === 'dark' ? '#f8fafc' : '#0f172a';
+        document.getElementById('state-theme').textContent = value;
+      }
+
+      function setName(value) {
+        document.getElementById('state-name').textContent = value;
+      }
+
+      function handleManualSubmit(event) {
+        event.preventDefault();
+        const input = document.getElementById('demo-input');
+        const value = input.value.trim();
+        if (!value) return;
+        input.value = '';
+        log(`Manual command: ${value}`);
+      }
+
+      function connectToMcpHost() {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+          return;
+        }
+
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socketUrl = `${protocol}://${window.location.host}/mcp/ws`;
+        ws = new WebSocket(socketUrl);
+
+        ws.addEventListener('open', () => {
+          log('Connected to MCP host, sending client_hello.');
+          ws.send(JSON.stringify({ type: 'client_hello', version: '1.0' }));
+        });
+
+        ws.addEventListener('message', (event) => {
+          let message;
+          try {
+            message = JSON.parse(event.data);
+          } catch (error) {
+            log(`Received non-JSON message from host: ${event.data}`);
+            return;
+          }
+
+          if (message.type === 'server_hello') {
+            log('Received server_hello from MCP host.');
+            return;
+          }
+
+          if (message.type === 'model_response' || message.type === 'tool_response') {
+            const entry = pending.get(message.id);
+            if (entry) {
+              pending.delete(message.id);
+              if (message.error) {
+                entry.reject(new Error(message.error.message || 'Host error'));
+              } else {
+                entry.resolve(message.response || message.result);
+              }
+            }
+            return;
+          }
+
+          if (message.type === 'error') {
+            log(`Host returned error: ${message.error?.message || 'Unknown error'}`);
+            const entry = pending.get(message.id);
+            if (entry) {
+              pending.delete(message.id);
+              entry.reject(new Error(message.error?.message || 'Host error'));
+            }
+          }
+        });
+
+        ws.addEventListener('close', () => {
+          log('MCP host connection closed. Retrying in 3s...');
+          setTimeout(connectToMcpHost, 3000);
+        });
+
+        ws.addEventListener('error', (event) => {
+          log(`WebSocket error: ${event.message || 'unknown error'}`);
+        });
+      }
+
+      function sendToHost(payload) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          return Promise.reject(new Error('MCP host not connected yet.'));
+        }
+
+        return new Promise((resolve, reject) => {
+          const timeout = window.setTimeout(() => {
+            pending.delete(payload.id);
+            reject(new Error('MCP host request timed out'));
+          }, 20000);
+
+          pending.set(payload.id, {
+            resolve: (value) => {
+              clearTimeout(timeout);
+              resolve(value);
+            },
+            reject: (error) => {
+              clearTimeout(timeout);
+              reject(error);
+            },
+          });
+
+          ws.send(JSON.stringify(payload));
+        });
+      }
+
+      document.addEventListener('ozwell-chat-ready', () => {
+        log('Chat iframe connected. Ready to handle tool calls.');
+      });
+
+      window.OzwellChat.ready().then(() => {
+        log('Handshake acknowledged. Connecting to MCP host and registering handler.');
+        connectToMcpHost();
+
+        window.OzwellChat.onRequest(async ({ id, tool, args }) => {
+          log(`Tool call → ${tool} ${JSON.stringify(args)}`);
+
+          if (tool === 'update_theme') {
+            setTheme(args?.value || 'light');
+            return `Theme updated to ${args?.value || 'light'}`;
+          }
+
+          if (tool === 'update_name') {
+            setName(args?.value || 'Visitor');
+            return `Name updated to ${args?.value || 'Visitor'}`;
+          }
+
+          if (tool === 'model_request') {
+            const idString = typeof id === 'string' ? id : `req-${id}`;
+            const payload = {
+              type: 'model_request',
+              id: idString,
+              params: {
+                prompt: args?.prompt || '',
+                model: args?.model,
+              },
+            };
+
+            const response = await sendToHost(payload);
+            return response;
+          }
+
+          // Unknown tool: pass through to MCP host for awareness
+          const idString = typeof id === 'string' ? id : `req-${id}`;
+          const payload = {
+            type: 'tools/call',
+            id: idString,
+            params: {
+              name: tool,
+              arguments: args || {},
+            },
+          };
+
+          const response = await sendToHost(payload);
+          return response;
+        });
+      });
+    </script>
+  </body>
+</html>

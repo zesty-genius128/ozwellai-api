@@ -3,6 +3,8 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import multipart from '@fastify/multipart';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
 
 // Import routes
 import modelsRoute from './routes/models';
@@ -10,6 +12,9 @@ import chatRoute from './routes/chat';
 import responsesRoute from './routes/responses';
 import embeddingsRoute from './routes/embeddings';
 import filesRoute from './routes/files';
+
+// MCP host
+import registerMcpHost from './mcp/host';
 
 // Import schemas for OpenAPI generation
 import * as schemas from '../../spec';
@@ -121,6 +126,15 @@ async function buildServer() {
   await fastify.register(responsesRoute);
   await fastify.register(embeddingsRoute);
   await fastify.register(filesRoute);
+
+  // Serve public assets (embed widget, documentation)
+  await fastify.register(fastifyStatic, {
+    root: path.join(__dirname, '../public'),
+    prefix: '/',
+  });
+
+  // Register MCP WebSocket host
+  await registerMcpHost(fastify);
 
   // 404 handler
   fastify.setNotFoundHandler((request, reply) => {

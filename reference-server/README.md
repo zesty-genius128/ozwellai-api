@@ -6,6 +6,7 @@ An OpenAI-compatible Fastify server that provides a reference implementation of 
 
 - **Full OpenAI API Compatibility**: Wire-compatible with OpenAI's API specification
 - **Real Text Inference**: Uses deterministic text generation for predictable testing
+- **MCP Host**: Built-in WebSocket endpoint (`/mcp/ws`) and embeddable chat widget
 - **Streaming Support**: Server-Sent Events (SSE) for both `/v1/responses` and `/v1/chat/completions`
 - **File Management**: Complete file upload, download, and management system
 - **Docker Support**: Multi-architecture Docker images with security best practices
@@ -32,6 +33,25 @@ npm run dev
 ```
 
 The server will start at `http://localhost:3000`
+
+### MCP / Embeddable Chatbot
+
+- WebSocket MCP host: `ws://localhost:3000/mcp/ws`
+- Demo chat widget assets under `/embed/`
+
+Add the script tag below to any page served by this instance to mount the widget:
+
+```html
+<script src="/embed/embed.js"></script>
+```
+
+Listen for the `ozwell-chat-ready` event and register tool handlers via `window.OzwellChat.onRequest(({ tool, args }) => ...)`. See `public/embed/test-host.html` for a complete example.
+
+Environment variables:
+
+- `MCP_API_KEY` – API key used when the host calls the LLM (default `ollama`).
+- `MCP_BASE_URL` – Optional override for the LLM base URL.
+- `MCP_DEFAULT_MODEL` – Defaults to `llama3`.
 
 ### Available Scripts
 
