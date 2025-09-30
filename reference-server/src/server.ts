@@ -12,10 +12,7 @@ import chatRoute from './routes/chat';
 import responsesRoute from './routes/responses';
 import embeddingsRoute from './routes/embeddings';
 import filesRoute from './routes/files';
-
-// MCP host
-import registerMcpHost from './mcp/host';
-
+import embedChatRoute from './routes/embed-chat';
 // Import schemas for OpenAPI generation
 import * as schemas from '../../spec';
 
@@ -126,15 +123,13 @@ async function buildServer() {
   await fastify.register(responsesRoute);
   await fastify.register(embeddingsRoute);
   await fastify.register(filesRoute);
+  await fastify.register(embedChatRoute);
 
   // Serve public assets (embed widget, documentation)
   await fastify.register(fastifyStatic, {
     root: path.join(__dirname, '../public'),
     prefix: '/',
   });
-
-  // Register MCP WebSocket host
-  await registerMcpHost(fastify);
 
   // 404 handler
   fastify.setNotFoundHandler((request, reply) => {
