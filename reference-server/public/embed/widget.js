@@ -279,17 +279,26 @@ formEl.addEventListener('submit', async (event) => {
     let tool;
     let args;
 
-    if (/dark mode|switch to dark/i.test(text)) {
+    const normalized = text.toLowerCase();
+    const darkRequest =
+      /(dark\s*(mode|theme)|switch\s+to\s+dark|enable\s+dark|make\s+it\s+dark)/i.test(text) ||
+      (normalized.includes('dark') && normalized.includes('theme'));
+    const lightRequest =
+      /(light\s*(mode|theme)|switch\s+to\s+light|enable\s+light|make\s+it\s+light)/i.test(text) ||
+      (normalized.includes('light') && normalized.includes('theme'));
+
+    if (darkRequest) {
       tool = 'update_theme';
       args = { value: 'dark' };
-    } else if (/light mode|switch to light/i.test(text)) {
+    } else if (lightRequest) {
       tool = 'update_theme';
       args = { value: 'light' };
     } else {
-      const match = text.match(/set name to (.+)/i);
-      if (match) {
+      const nameMatch = text.match(/^(?:set\s+(?:my\s+)?)?name\s+to\s+(.+)/i) || text.match(/^call\s+me\s+(.+)/i);
+      if (nameMatch) {
         tool = 'update_name';
-        args = { value: match[1].trim() };
+        const value = nameMatch[1].trim().replace(/[.!?]+$/, '');
+        args = { value };
       } else {
         tool = 'model_request';
         args = { prompt: text };
