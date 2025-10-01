@@ -102,6 +102,17 @@
       case 'request-config':
         sendConfig();
         break;
+      case 'insert': {
+        const detail = {
+          text: data.payload?.text || '',
+          close: Boolean(data.payload?.close),
+        };
+        document.dispatchEvent(new CustomEvent('ozwell-chat-insert', { detail }));
+        break;
+      }
+      case 'closed':
+        document.dispatchEvent(new CustomEvent('ozwell-chat-closed'));
+        break;
       default:
         break;
     }

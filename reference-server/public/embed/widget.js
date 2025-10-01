@@ -15,6 +15,9 @@ const messagesEl = document.getElementById('messages');
 const formEl = document.getElementById('chat-form');
 const inputEl = document.getElementById('chat-input');
 const submitButton = document.querySelector('.chat-submit');
+const saveButton = document.getElementById('save-button');
+
+let lastAssistantMessage = '';
 
 function setStatus(text) {
   if (statusEl) {
@@ -69,6 +72,8 @@ async function sendMessage(text) {
   state.sending = true;
   formEl?.classList.add('is-sending');
   submitButton?.setAttribute('disabled', 'true');
+  saveButton?.setAttribute('disabled', 'true');
+  lastAssistantMessage = '';
 
   try {
     const response = await fetch(state.config.endpoint || '/embed/chat', {
@@ -103,8 +108,12 @@ async function sendMessage(text) {
     };
 
     state.messages.push(assistantMessage);
+    lastAssistantMessage = assistantContent;
     addMessage('assistant', assistantContent);
     setStatus('Ready');
+    if (assistantContent.trim()) {
+      saveButton?.removeAttribute('disabled');
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected error';
     addMessage('system', `Error: ${message}`);
@@ -113,6 +122,9 @@ async function sendMessage(text) {
     state.sending = false;
     formEl?.classList.remove('is-sending');
     submitButton?.removeAttribute('disabled');
+    if (!lastAssistantMessage.trim()) {
+      saveButton?.setAttribute('disabled', 'true');
+    }
   }
 }
 
@@ -133,6 +145,13 @@ function handleParentMessage(event) {
   if (data.type === 'config' && data.payload?.config) {
     applyConfig(data.payload.config);
   }
+
+  if (data.type === 'close') {
+    window.parent.postMessage({
+      source: 'ozwell-chat-widget',
+      type: 'closed',
+    }, '*');
+  }
 }
 
 function notifyReady() {
@@ -142,8 +161,24 @@ function notifyReady() {
   }, '*');
 }
 
+function handleSave() {
+  if (!lastAssistantMessage.trim()) return;
+
+  window.parent.postMessage({
+    source: 'ozwell-chat-widget',
+    type: 'insert',
+    payload: {
+      text: lastAssistantMessage,
+      close: true,
+    },
+  }, '*');
+
+  setStatus('Sent to host');
+}
+
 window.addEventListener('message', handleParentMessage);
 formEl?.addEventListener('submit', handleSubmit);
+saveButton?.addEventListener('click', handleSave);
 
 addMessage('system', 'Widget loaded. Waiting for configuration...');
 setStatus('Waiting for host...');
