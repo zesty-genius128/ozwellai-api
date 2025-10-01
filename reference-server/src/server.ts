@@ -21,6 +21,8 @@ const fastify = Fastify({
 });
 
 async function buildServer() {
+  const rootDir = path.resolve(process.cwd());
+
   // Register CORS
   await fastify.register(cors, {
     origin: true,
@@ -127,13 +129,13 @@ async function buildServer() {
 
   // Serve public assets (documentation, misc)
   await fastify.register(fastifyStatic, {
-    root: path.join(__dirname, '../public'),
+    root: path.join(rootDir, 'public'),
     prefix: '/',
   });
 
   // Serve embed assets from dedicated directory
   await fastify.register(fastifyStatic, {
-    root: path.join(__dirname, '../embed'),
+    root: path.join(rootDir, 'embed'),
     prefix: '/embed/',
     decorateReply: false,
   });
