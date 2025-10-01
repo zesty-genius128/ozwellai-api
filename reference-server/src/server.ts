@@ -125,10 +125,17 @@ async function buildServer() {
   await fastify.register(filesRoute);
   await fastify.register(embedChatRoute);
 
-  // Serve public assets (embed widget, documentation)
+  // Serve public assets (documentation, misc)
   await fastify.register(fastifyStatic, {
     root: path.join(__dirname, '../public'),
     prefix: '/',
+  });
+
+  // Serve embed assets from dedicated directory
+  await fastify.register(fastifyStatic, {
+    root: path.join(__dirname, '../embed'),
+    prefix: '/embed/',
+    decorateReply: false,
   });
 
   // 404 handler

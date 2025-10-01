@@ -37,40 +37,68 @@
       #chat-container {
         width: 100%;
       }
+
+      #host-log {
+        margin-top: 18px;
+        background: rgba(15, 23, 42, 0.55);
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        max-height: 120px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
     </style>
   </head>
   <body>
     <div class="panel">
       <h1>Ozwell Chat Widget</h1>
-      <p>Drop this script tag + container into any page to embed the Ozwell + Ollama chatbot.</p>
+      <p>This page loads the embedded chatbot from the reference server.</p>
       <div id="chat-container"></div>
       <label for="host-input" style="display:block;margin-top:24px;font-weight:600;">Host Input (receives Save &amp; Close)</label>
       <textarea id="host-input" style="width:100%;height:90px;border-radius:8px;border:1px solid rgba(148, 163, 184, 0.4);padding:10px;background:rgba(15,23,42,0.6);color:#f8fafc;"></textarea>
+      <div id="host-log"></div>
     </div>
 
     <script>
+      const referenceBaseUrl = '__REFERENCE_BASE_URL__';
+      const normalizedBase = referenceBaseUrl.replace(/\/$/, '');
+
       window.OzwellChatConfig = {
         containerId: 'chat-container',
         title: 'Ozwell Assistant',
         placeholder: 'Ask me anything...',
         model: 'llama3',
-        endpoint: '/embed/chat'
+        endpoint: `${normalizedBase}/embed/chat`,
+        widgetUrl: `${normalizedBase}/embed/widget.html`
       };
-    </script>
-    <script src="./embed.js"></script>
-    <script>
+
+      const loader = document.createElement('script');
+      loader.src = `${normalizedBase}/embed/embed.js`;
+      loader.async = true;
+      document.head.appendChild(loader);
+
+      const logEl = document.getElementById('host-log');
+      function log(message) {
+        const time = new Date().toLocaleTimeString();
+        logEl.textContent += `[${time}] ${message}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
       document.addEventListener('ozwell-chat-insert', (event) => {
         const textarea = document.getElementById('host-input');
         if (!textarea) return;
         textarea.value = event.detail?.text || '';
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        log('Received Save & Close payload');
         if (event.detail?.close) {
-          log('Host received Save & Close request');
+          log('Widget requested close');
         }
       });
 
       document.addEventListener('ozwell-chat-closed', () => {
-        log('Widget confirmed it is closed');
+        log('Widget confirmed close');
       });
     </script>
   </body>

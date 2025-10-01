@@ -5,6 +5,7 @@
     placeholder: 'Ask a question...',
     model: 'llama3',
     endpoint: '/embed/chat',
+    widgetUrl: '/embed/widget.html',
   };
 
   const state = {
@@ -40,7 +41,8 @@
       document.body;
 
     const iframe = document.createElement('iframe');
-    iframe.src = options.src || '/embed/widget.html';
+    const widgetSrc = options.src || config.widgetUrl || '/embed/widget.html';
+    iframe.src = widgetSrc;
     iframe.width = String(options.width || DEFAULT_DIMENSIONS.width);
     iframe.height = String(options.height || DEFAULT_DIMENSIONS.height);
     iframe.style.border = '0';
@@ -158,9 +160,15 @@
     },
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function autoMount() {
     mount();
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoMount);
+  } else {
+    autoMount();
+  }
 
   window.OzwellChat = api;
 })();
