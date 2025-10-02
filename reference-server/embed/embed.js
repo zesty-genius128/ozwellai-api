@@ -41,7 +41,7 @@
       document.body;
 
     const iframe = document.createElement('iframe');
-    const widgetSrc = options.src || config.widgetUrl || '/embed/widget.html';
+    const widgetSrc = options.src || config.widgetUrl || config.src || '/embed/widget.html';
     iframe.src = widgetSrc;
     iframe.width = String(options.width || DEFAULT_DIMENSIONS.width);
     iframe.height = String(options.height || DEFAULT_DIMENSIONS.height);
