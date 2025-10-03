@@ -34,24 +34,23 @@ npm run dev
 
 The server will start at `http://localhost:3000`
 
-### MCP / Embeddable Chatbot
+### Embeddable Chat Widget
 
-- WebSocket MCP host: `ws://localhost:3000/mcp/ws`
-- Demo chat widget assets under `/embed/`
-
-Add the script tag below to any page served by this instance to mount the widget:
+Add the widget to any page:
 
 ```html
-<script src="/embed/embed.js"></script>
+<script>
+  window.OzwellChatConfig = {
+    widgetUrl: 'https://ozwellai-reference-server.opensource.mieweb.org/embed/widget.html',
+    endpoint: 'https://ozwellai-reference-server.opensource.mieweb.org/embed/chat'
+  };
+</script>
+<script async src="https://ozwellai-reference-server.opensource.mieweb.org/embed/embed.js"></script>
 ```
 
-Listen for the `ozwell-chat-ready` event and register tool handlers via `window.OzwellChat.onRequest(({ tool, args }) => ...)`. See `public/embed/test-host.html` for a complete example.
+**Live Demo:** https://ozwellai-embedtest.opensource.mieweb.org
 
-Environment variables:
-
-- `MCP_API_KEY` – API key used when the host calls the LLM (default `ollama`).
-- `MCP_BASE_URL` – Optional override for the LLM base URL.
-- `MCP_DEFAULT_MODEL` – Defaults to `llama3`.
+See [embed/README.md](embed/README.md) for full documentation.
 
 ### Available Scripts
 
@@ -73,6 +72,13 @@ Environment variables:
 
 ### Embeddings
 - `POST /v1/embeddings` - Generate text embeddings
+
+### Embed Widget
+- `GET /embed/embed.js` - Widget loader script
+- `GET /embed/widget.html` - Widget iframe HTML
+- `GET /embed/widget.js` - Widget client-side logic
+- `GET /embed/widget.css` - Widget styles
+- `POST /embed/chat` - Widget chat endpoint
 
 ### Files
 - `POST /v1/files` - Upload file
@@ -231,10 +237,17 @@ The server generates OpenAPI 3.1 compliant documentation based on the current [O
 
 ## Configuration
 
-Environment variables:
+### Core Server Environment Variables
 - `PORT` - Server port (default: 3000)
 - `HOST` - Server host (default: 0.0.0.0)
 - `NODE_ENV` - Environment (development/production)
+
+### Embed Chat Environment Variables
+- `EMBED_CHAT_API_KEY` - API key for Ozwell SDK (default: `ollama`)
+- `EMBED_CHAT_BASE_URL` - Base URL for external LLM API (optional)
+- `EMBED_CHAT_MODEL` - Default model name (default: `llama3`)
+
+When `EMBED_CHAT_API_KEY=ollama`, the chat endpoint expects Ollama running at `http://127.0.0.1:11434`. If not available, falls back to deterministic text generator.
 
 ## Error Handling
 
@@ -271,15 +284,23 @@ The server is designed for deterministic testing:
 
 ```
 src/
-├── server.ts           # Main server entry point that initializes a Fastify server with OpenAPI/Swagger documentation, registers all API routes, sets up middleware (CORS, multipart uploads), and handles global error responses and authentication. Serves as the central orchestration file for the entire reference server, providing a complete OpenAI-compatible API implementation with proper documentation, routing, and error handling infrastructure.
+├── server.ts           # Main server entry point
 ├── routes/             # API endpoint handlers
-│   ├── chat.ts         # Implements the `/v1/chat/completions` endpoint supporting both streaming and non-streaming chat completions, with OpenAI-compatible request/response formats including message handling, model validation, and token usage tracking. Provides the core conversational AI functionality that mimics OpenAI's chat completions API, enabling clients to interact with language models for generating human-like responses in chat applications.
-│   ├── embeddings.ts   # Handles the `/v1/embeddings` endpoint for generating vector embeddings from text inputs, supporting multiple embedding models with configurable dimensions and batch processing. Enables text-to-vector conversion for semantic search, similarity matching, clustering, and other NLP tasks that require numerical representations of text for machine learning applications.
-│   ├── files.ts        # Manages file operations through multiple endpoints (`/v1/files`) including upload, listing, retrieval, content download, and deletion, with persistent storage in a local data directory. Supports file management capabilities for AI applications, allowing clients to upload training data, documents, images, or other assets that language models or processing pipelines might need to access.
-│   ├── models.ts       # Provides the `/v1/models` endpoint that returns a hardcoded list of available AI models (GPT-4 variants and embedding models) with their metadata. Allows API clients to discover and enumerate what AI models are available for use, following OpenAI's API conventions for model discovery and selection.
-│   └── responses.ts    # Implements a custom `/v1/responses` endpoint for generating responses with semantic event-based streaming (start/content/completion events), offering an alternative to standard chat completions. Provides a specialized response generation method with more granular streaming control, potentially for applications requiring real-time feedback or different interaction patterns than traditional chat completions.
+│   ├── chat.ts         # /v1/chat/completions endpoint
+│   ├── embeddings.ts   # /v1/embeddings endpoint
+│   ├── files.ts        # /v1/files/* endpoints
+│   ├── models.ts       # /v1/models endpoint
+│   ├── responses.ts    # /v1/responses endpoint
+│   └── embed-chat.ts   # /embed/chat endpoint
 └── util/               # Utility functions
-    └── index.ts        # Contains shared utility functions including a deterministic text generator for testing, embedding vector generation, unique ID creation, token counting, error response formatting, and basic authentication validation. Centralizes common functionality used across multiple routes to ensure consistency, reduce code duplication, and provide reusable components for text generation, vector math, and API utilities.
+    └── index.ts        # Text generation, embeddings, token counting, etc.
+
+embed/
+├── embed.js            # Widget loader script
+├── widget.html         # Widget iframe content
+├── widget.js           # Widget client-side logic
+├── widget.css          # Widget styles
+└── README.md           # Widget documentation
 ```
 
 ### Adding New Endpoints
