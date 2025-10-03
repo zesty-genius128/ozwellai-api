@@ -48,7 +48,9 @@ Add the widget to any page:
 <script async src="https://ozwellai-reference-server.opensource.mieweb.org/embed/embed.js"></script>
 ```
 
-**Live Demo:** https://ozwellai-embedtest.opensource.mieweb.org
+**Live Demo (test only):** https://ozwellai-embedtest.opensource.mieweb.org
+
+**For deployment:** Run Ollama in your container or set `EMBED_CHAT_BASE_URL` to your LLM endpoint for real responses.
 
 See [embed/README.md](embed/README.md) for full documentation.
 
