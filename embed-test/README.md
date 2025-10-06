@@ -11,6 +11,17 @@ PORT=8080 REFERENCE_SERVER_URL=https://ozwellai-reference-server.opensource.miew
 
 Visit http://localhost:8080
 
+### Deployment with PM2 (Limited Resources)
+
+For containers with limited memory:
+
+```bash
+PORT=8080 REFERENCE_SERVER_URL=https://ozwellai-reference-server.opensource.mieweb.org \
+  pm2 start server.js --name embedtest --max-memory-restart 300M
+pm2 save
+pm2 startup  # Follow printed command
+```
+
 ## Live Demo
 
 https://ozwellai-embedtest.opensource.mieweb.org
