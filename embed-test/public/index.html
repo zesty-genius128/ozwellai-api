@@ -1,105 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Ozwell Chat Widget</title>
-    <style>
-      body {
-        margin: 0;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #0f172a;
-        color: #f8fafc;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .panel {
-        width: min(380px, 100%);
-        padding: 24px;
-        background: rgba(15, 23, 42, 0.85);
-        border-radius: 16px;
-        box-shadow: 0 35px 70px rgba(2, 6, 23, 0.65);
-      }
-
-      h1 {
-        margin: 0 0 12px;
-        font-size: 24px;
-      }
-
-      p {
-        margin: 0 0 20px;
-        opacity: 0.75;
-        line-height: 1.5;
-      }
-
-      #chat-container {
-        width: 100%;
-      }
-
-      #host-log {
-        margin-top: 18px;
-        background: rgba(15, 23, 42, 0.55);
-        border-radius: 12px;
-        padding: 12px;
-        font-size: 13px;
-        line-height: 1.5;
-        max-height: 120px;
-        overflow-y: auto;
-        white-space: pre-wrap;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="panel">
-      <h1>Ozwell Chat Widget</h1>
-      <p>This page loads the embedded chatbot from the reference server.</p>
-      <div id="chat-container"></div>
-      <label for="host-input" style="display:block;margin-top:24px;font-weight:600;">Host Input (receives Save &amp; Close)</label>
-      <textarea id="host-input" style="width:100%;height:90px;border-radius:8px;border:1px solid rgba(148, 163, 184, 0.4);padding:10px;background:rgba(15,23,42,0.6);color:#f8fafc;"></textarea>
-      <div id="host-log"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ozwell Dashboard - Embed Test</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <link rel="stylesheet" href="/assets/chat-wrapper.css" />
+  <!-- iframe-sync library will be loaded here in Checkpoint 4 -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/iframe-sync@latest/index.min.js"></script> -->
+</head>
+<body>
+  <!-- Header Section -->
+  <header class="header">
+    <div class="header-left">
+      <div class="avatar">A</div>
+      <div class="header-info">
+        <h1>Welcome back, Alice Johnson!</h1>
+        <div class="header-meta">
+          <span>Administrator</span>
+          <span>•</span>
+          <span>Last login: Today at 2:45 PM</span>
+        </div>
+      </div>
     </div>
+    <div class="status-badge">
+      <span class="status-dot"></span>
+      Active
+    </div>
+  </header>
 
-    <script>
-      const referenceBaseUrl = '__REFERENCE_BASE_URL__';
-      const normalizedBase = referenceBaseUrl.replace(/\/$/, '');
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="content-grid">
+      <!-- Left Column: Dashboard Overview -->
+      <section class="dashboard-container">
+        <h2 class="section-header">
+          <span class="section-icon">📊</span>
+          Dashboard Overview
+        </h2>
 
-      window.OzwellChatConfig = {
-        containerId: 'chat-container',
-        title: 'Ozwell Assistant',
-        placeholder: 'Ask me anything...',
-        model: 'llama3',
-        endpoint: `${normalizedBase}/embed/chat`,
-        widgetUrl: `${normalizedBase}/embed/widget.html`
-      };
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Name</div>
+            <div class="stat-value" id="dashboard-name">Alice Johnson</div>
+          </div>
 
-      const loader = document.createElement('script');
-      loader.src = `${normalizedBase}/embed/embed.js`;
-      loader.async = true;
-      document.head.appendChild(loader);
+          <div class="stat-card">
+            <div class="stat-label">Address</div>
+            <div class="stat-value" id="dashboard-address">123 Main Street, Suite 100</div>
+          </div>
 
-      const logEl = document.getElementById('host-log');
-      function log(message) {
-        const time = new Date().toLocaleTimeString();
-        logEl.textContent += `[${time}] ${message}\n`;
-        logEl.scrollTop = logEl.scrollHeight;
-      }
+          <div class="stat-card">
+            <div class="stat-label">Zip Code</div>
+            <div class="stat-value" id="dashboard-zip">90210</div>
+          </div>
+        </div>
 
-      document.addEventListener('ozwell-chat-insert', (event) => {
-        const textarea = document.getElementById('host-input');
-        if (!textarea) return;
-        textarea.value = event.detail?.text || '';
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        log('Received Save & Close payload');
-        if (event.detail?.close) {
-          log('Widget requested close');
-        }
-      });
+        <!-- Recent Activity -->
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; margin-top: 24px;">Recent Activity</h3>
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="activity-icon">📝</div>
+            <div class="activity-content">
+              <div class="activity-title">Updated project requirements</div>
+              <div class="activity-time">15 minutes ago</div>
+            </div>
+          </div>
 
-      document.addEventListener('ozwell-chat-closed', () => {
-        log('Widget confirmed close');
-      });
-    </script>
-  </body>
+          <div class="activity-item">
+            <div class="activity-icon">👥</div>
+            <div class="activity-content">
+              <div class="activity-title">Team meeting scheduled</div>
+              <div class="activity-time">1 hour ago</div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon">📊</div>
+            <div class="activity-content">
+              <div class="activity-title">Monthly report generated</div>
+              <div class="activity-time">3 hours ago</div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon">🔧</div>
+            <div class="activity-content">
+              <div class="activity-title">System maintenance completed</div>
+              <div class="activity-time">Yesterday</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Form Input Section -->
+      <section class="form-container">
+        <h2 class="section-header">
+          <span class="section-icon">✏️</span>
+          User Information
+        </h2>
+
+        <form id="user-form" class="form-vertical">
+          <div class="form-field">
+            <label for="input-name">Name</label>
+            <input
+              type="text"
+              id="input-name"
+              name="name"
+              placeholder="Enter your name"
+              value="Alice Johnson"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="input-address">Address</label>
+            <input
+              type="text"
+              id="input-address"
+              name="address"
+              placeholder="Enter your address"
+              value="123 Main Street, Suite 100"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="input-zip">Zip Code</label>
+            <input
+              type="text"
+              id="input-zip"
+              name="zip"
+              placeholder="Enter zip code"
+              value="90210"
+            />
+          </div>
+
+          <button type="submit" class="submit-button">Update Dashboard</button>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- Chat Floating Button -->
+  <button id="ozwell-chat-button" class="ozwell-chat-button">
+    💬
+  </button>
+
+  <!-- Chat Window Wrapper -->
+  <div id="ozwell-chat-wrapper" class="ozwell-chat-wrapper hidden">
+    <div class="ozwell-chat-header">
+      <div class="ozwell-chat-title">
+        💬 Ozwell
+      </div>
+      <div class="ozwell-chat-controls">
+        <button id="ozwell-minimize-btn" class="ozwell-chat-control-btn" title="Minimize">−</button>
+        <button id="ozwell-close-btn" class="ozwell-chat-control-btn" title="Close">×</button>
+      </div>
+    </div>
+    <div class="ozwell-chat-content" id="chat-container"></div>
+  </div>
+
+  <script>
+    // Simple form submission handler for Checkpoint 1
+    document.getElementById('user-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // Get form values
+      const name = document.getElementById('input-name').value;
+      const address = document.getElementById('input-address').value;
+      const zip = document.getElementById('input-zip').value;
+
+      // Update dashboard
+      document.getElementById('dashboard-name').textContent = name;
+      document.getElementById('dashboard-address').textContent = address;
+      document.getElementById('dashboard-zip').textContent = zip;
+    });
+
+    // Load Ozwell chat widget script
+    const referenceBaseUrl = '__REFERENCE_BASE_URL__';
+    const normalizedBase = referenceBaseUrl.replace(/\/$/, '');
+
+    window.OzwellChatConfig = {
+      containerId: 'chat-container',
+      title: 'Ozwell Assistant',
+      placeholder: 'Ask me anything...',
+      model: 'llama3',
+      endpoint: `${normalizedBase}/embed/chat`,
+      widgetUrl: `${normalizedBase}/embed/widget.html`
+    };
+
+    const loader = document.createElement('script');
+    loader.src = `${normalizedBase}/embed/embed.js`;
+    loader.async = true;
+    document.head.appendChild(loader);
+  </script>
+
+  <!-- Chat wrapper functionality -->
+  <script src="/assets/chat-wrapper.js"></script>
+</body>
 </html>
