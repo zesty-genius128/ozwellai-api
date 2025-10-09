@@ -107,6 +107,33 @@
       updateFormState();
     });
 
+    // Listen for tool calls from the widget
+    window.addEventListener('message', function(event) {
+      const data = event.data;
+
+      // Only handle messages from our widget
+      if (!data || data.source !== 'ozwell-chat-widget') return;
+
+      // Handle tool calls
+      if (data.type === 'tool_call') {
+        console.log('[app.js] Received tool call from widget:', data);
+
+        if (data.tool === 'update_name' && data.payload && data.payload.name) {
+          const newName = data.payload.name;
+          console.log('[app.js] Executing update_name tool:', newName);
+
+          // Update the input field
+          nameInput.value = newName;
+
+          // Trigger the input event to update dashboard and sync state
+          const inputEvent = new Event('input', { bubbles: true });
+          nameInput.dispatchEvent(inputEvent);
+
+          console.log('[app.js] Name updated successfully to:', newName);
+        }
+      }
+    });
+
     console.log('[app.js] Event listeners attached to form inputs');
     console.log('[app.js] Initialization complete! IframeSyncBroker is managing state.');
   }

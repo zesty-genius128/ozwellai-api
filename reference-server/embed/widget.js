@@ -13,7 +13,6 @@ const state = {
 console.log('[widget.js] Widget initializing...');
 
 const statusEl = document.getElementById('status');
-const titleEl = document.querySelector('.chat-header');
 const messagesEl = document.getElementById('messages');
 const formEl = document.getElementById('chat-form');
 const inputEl = document.getElementById('chat-input');
@@ -42,10 +41,6 @@ function applyConfig(config) {
     ...state.config,
     ...config,
   };
-
-  if (titleEl) {
-    titleEl.textContent = state.config.title || 'Ozwell Assistant';
-  }
 
   if (inputEl) {
     inputEl.placeholder = state.config.placeholder || 'Ask a question...';
@@ -89,8 +84,31 @@ Name: ${state.formData.name}
 Address: ${state.formData.address}
 Zip Code: ${state.formData.zipCode}
 
-When the user asks about their name, address, or zip code, use this information to answer. Be concise and friendly.`;
+When the user asks about their name, address, or zip code, use this information to answer. Be concise and friendly.
+
+You have access to a tool called 'update_name' that can update the user's name. When the user asks you to change or update their name, use this tool.`;
   }
+
+  // Define MCP tools
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'update_name',
+        description: 'Update the user\'s name in the form',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'The new name for the user'
+            }
+          },
+          required: ['name']
+        }
+      }
+    }
+  ];
 
   try {
     // Prepare headers
@@ -116,11 +134,13 @@ When the user asks about their name, address, or zip code, use this information 
       ? {
           model: state.config.model,
           messages: requestMessages,
+          tools: tools,
         }
       : {
           model: state.config.model,
           system: systemPrompt,
           messages: buildMessages(),
+          tools: tools,
         };
 
     const response = await fetch(state.config.endpoint || '/embed/chat', {
@@ -149,26 +169,76 @@ When the user asks about their name, address, or zip code, use this information 
 
     // Parse response based on format (OpenAI vs Ollama)
     let assistantContent;
+    let toolCalls = null;
+
     if (payload.choices && payload.choices[0]) {
       // OpenAI format
-      assistantContent = payload.choices[0].message?.content || '(no response)';
+      const choice = payload.choices[0];
+      assistantContent = choice.message?.content || '';
+      toolCalls = choice.message?.tool_calls;
     } else if (payload.message) {
       // Ollama format
-      assistantContent = payload.message.content || '(no response)';
+      assistantContent = payload.message.content || '';
+      toolCalls = payload.message.tool_calls;
     } else {
       assistantContent = '(no response)';
     }
 
-    const assistantMessage = {
-      role: 'assistant',
-      content: assistantContent,
-    };
+    // Handle tool calls
+    if (toolCalls && toolCalls.length > 0) {
+      console.log('[widget.js] Model returned tool calls:', toolCalls);
 
-    state.messages.push(assistantMessage);
-    lastAssistantMessage = assistantContent;
-    addMessage('assistant', assistantContent);
+      for (const toolCall of toolCalls) {
+        if (toolCall.function?.name === 'update_name') {
+          try {
+            const args = typeof toolCall.function.arguments === 'string'
+              ? JSON.parse(toolCall.function.arguments)
+              : toolCall.function.arguments;
+
+            console.log('[widget.js] Executing update_name tool with args:', args);
+
+            // Send tool call to parent via postMessage
+            window.parent.postMessage({
+              source: 'ozwell-chat-widget',
+              type: 'tool_call',
+              tool: 'update_name',
+              payload: {
+                name: args.name
+              }
+            }, '*');
+
+            // Add system message to chat
+            addMessage('system', `Updating name to "${args.name}"...`);
+          } catch (error) {
+            console.error('[widget.js] Error parsing tool arguments:', error);
+            addMessage('system', 'Error: Could not parse tool arguments');
+          }
+        }
+      }
+
+      // If there's also text content, show it
+      if (assistantContent && assistantContent.trim()) {
+        const assistantMessage = {
+          role: 'assistant',
+          content: assistantContent,
+        };
+        state.messages.push(assistantMessage);
+        lastAssistantMessage = assistantContent;
+        addMessage('assistant', assistantContent);
+      }
+    } else {
+      // No tool calls, just regular response
+      const assistantMessage = {
+        role: 'assistant',
+        content: assistantContent || '(no response)',
+      };
+      state.messages.push(assistantMessage);
+      lastAssistantMessage = assistantContent;
+      addMessage('assistant', assistantContent || '(no response)');
+    }
+
     setStatus('Ready');
-    if (assistantContent.trim()) {
+    if (lastAssistantMessage.trim()) {
       saveButton?.removeAttribute('disabled');
     }
   } catch (error) {

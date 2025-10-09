@@ -7,11 +7,21 @@ interface ChatMessage {
   content: string;
 }
 
+interface Tool {
+  type: string;
+  function: {
+    name: string;
+    description: string;
+    parameters: any;
+  };
+}
+
 interface EmbedChatRequest {
   messages?: ChatMessage[];
   message?: string;
   model?: string;
   system?: string;
+  tools?: Tool[];
 }
 
 const DEFAULT_MODEL = (process.env.EMBED_CHAT_MODEL || 'llama3').trim();
@@ -36,14 +46,21 @@ function createOzwellClient(request: any) {
   return new OzwellAI({ apiKey: API_KEY });
 }
 
-async function forwardToOzwell(request: any, model: string, messages: ChatMessage[]) {
+async function forwardToOzwell(request: any, model: string, messages: ChatMessage[], tools?: Tool[]) {
   const client = createOzwellClient(request);
 
-  return client.createChatCompletion({
+  const requestOptions: any = {
     model,
     messages,
     stream: false,
-  });
+  };
+
+  // Include tools if provided
+  if (tools && tools.length > 0) {
+    requestOptions.tools = tools;
+  }
+
+  return client.createChatCompletion(requestOptions);
 }
 
 const embedChatRoute: FastifyPluginAsync = async (fastify) => {
@@ -66,6 +83,23 @@ const embedChatRoute: FastifyPluginAsync = async (fastify) => {
           message: { type: 'string' },
           model: { type: 'string' },
           system: { type: 'string' },
+          tools: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string' },
+                function: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    description: { type: 'string' },
+                    parameters: { type: 'object' },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -102,7 +136,7 @@ const embedChatRoute: FastifyPluginAsync = async (fastify) => {
     }
 
     try {
-      const response = await forwardToOzwell(request, model, messages);
+      const response = await forwardToOzwell(request, model, messages, body.tools);
 
       const choice = response.choices?.[0];
       const assistantMessage = choice?.message || { role: 'assistant', content: '' };
