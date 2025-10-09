@@ -81,6 +81,11 @@ const embedChatRoute: FastifyPluginAsync = async (fastify) => {
         role: msg.role,
         content: msg.content,
       }));
+
+      const hasSystemMessage = messages.some((msg) => msg.role === 'system');
+      if (!hasSystemMessage && systemPrompt) {
+        messages.unshift({ role: 'system', content: systemPrompt });
+      }
     } else if (body.message) {
       messages = [
         { role: 'system', content: systemPrompt },

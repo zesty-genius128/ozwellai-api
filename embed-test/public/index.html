@@ -168,9 +168,8 @@
       containerId: 'chat-container',
       title: 'Ozwell Assistant',
       placeholder: 'Ask me anything...',
-      model: 'gpt-4o-mini',
-      endpoint: 'https://api.openai.com/v1/chat/completions',
-      openaiApiKey: 'your-key-here',  // ⚠️ Replace with your actual OpenAI API key
+      model: 'llama3.1:8b',
+      endpoint: `${normalizedBase}/embed/chat`,  // Routes through reference server to Ollama
       widgetUrl: `${normalizedBase}/embed/widget.html`
     };
 
