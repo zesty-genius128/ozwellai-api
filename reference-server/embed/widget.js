@@ -84,31 +84,30 @@ Name: ${state.formData.name}
 Address: ${state.formData.address}
 Zip Code: ${state.formData.zipCode}
 
-When the user asks about their name, address, or zip code, use this information to answer. Be concise and friendly.
-
-You have access to a tool called 'update_name' that can update the user's name. When the user asks you to change or update their name, use this tool.`;
+When the user asks about their name, address, or zip code, use this information to answer. Be concise and friendly.`;
   }
 
-  // Define MCP tools
-  const tools = [
-    {
+  // Build MCP tools from parent config (dynamic, not hardcoded)
+  let tools = [];
+  if (state.config.tools && Array.isArray(state.config.tools)) {
+    // Convert parent's tool definitions to OpenAI function calling format
+    tools = state.config.tools.map(tool => ({
       type: 'function',
       function: {
-        name: 'update_name',
-        description: 'Update the user\'s name in the form',
-        parameters: {
-          type: 'object',
-          properties: {
-            name: {
-              type: 'string',
-              description: 'The new name for the user'
-            }
-          },
-          required: ['name']
-        }
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
       }
+    }));
+
+    // Add tool information to system prompt
+    if (tools.length > 0 && state.formData) {
+      const toolNames = tools.map(t => t.function.name).join(', ');
+      systemPrompt += `\n\nYou have access to the following tools: ${toolNames}. Use them when the user asks you to perform relevant actions.`;
     }
-  ];
+
+    console.log('[widget.js] Tools loaded from config:', tools);
+  }
 
   try {
     // Prepare headers
@@ -184,34 +183,34 @@ You have access to a tool called 'update_name' that can update the user's name. 
       assistantContent = '(no response)';
     }
 
-    // Handle tool calls
+    // Handle tool calls (dynamic - works with any tool from parent config)
     if (toolCalls && toolCalls.length > 0) {
       console.log('[widget.js] Model returned tool calls:', toolCalls);
 
       for (const toolCall of toolCalls) {
-        if (toolCall.function?.name === 'update_name') {
+        const toolName = toolCall.function?.name;
+
+        if (toolName) {
           try {
             const args = typeof toolCall.function.arguments === 'string'
               ? JSON.parse(toolCall.function.arguments)
               : toolCall.function.arguments;
 
-            console.log('[widget.js] Executing update_name tool with args:', args);
+            console.log(`[widget.js] Executing tool '${toolName}' with args:`, args);
 
             // Send tool call to parent via postMessage
             window.parent.postMessage({
               source: 'ozwell-chat-widget',
               type: 'tool_call',
-              tool: 'update_name',
-              payload: {
-                name: args.name
-              }
+              tool: toolName,
+              payload: args
             }, '*');
 
             // Add system message to chat
-            addMessage('system', `Updating name to "${args.name}"...`);
+            addMessage('system', `Executing ${toolName}...`);
           } catch (error) {
             console.error('[widget.js] Error parsing tool arguments:', error);
-            addMessage('system', 'Error: Could not parse tool arguments');
+            addMessage('system', `Error: Could not execute ${toolName}`);
           }
         }
       }

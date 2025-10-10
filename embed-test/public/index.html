@@ -170,7 +170,24 @@
       placeholder: 'Ask me anything...',
       model: 'llama3.1:8b',
       endpoint: `${normalizedBase}/embed/chat`,  // Routes through reference server to Ollama
-      widgetUrl: `${normalizedBase}/embed/widget.html`
+      widgetUrl: `${normalizedBase}/embed/widget.html`,
+      // MCP Tools - defined by parent page
+      tools: [
+        {
+          name: 'update_name',
+          description: 'Update the user\'s name in the form',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'The new name for the user'
+              }
+            },
+            required: ['name']
+          }
+        }
+      ]
     };
 
     const loader = document.createElement('script');

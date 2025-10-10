@@ -107,6 +107,28 @@
       updateFormState();
     });
 
+    // MCP Tool Handler Registry
+    // This is where parent page defines what happens when tools are called
+    const toolHandlers = {
+      'update_name': function(args) {
+        console.log('[app.js] Executing update_name tool handler:', args);
+
+        if (args.name) {
+          // Update the input field
+          nameInput.value = args.name;
+
+          // Trigger the input event to update dashboard and sync state
+          const inputEvent = new Event('input', { bubbles: true });
+          nameInput.dispatchEvent(inputEvent);
+
+          console.log('[app.js] Name updated successfully to:', args.name);
+        }
+      }
+      // Future tools can be added here, e.g.:
+      // 'update_address': function(args) { ... },
+      // 'get_weather': function(args) { ... }
+    };
+
     // Listen for tool calls from the widget
     window.addEventListener('message', function(event) {
       const data = event.data;
@@ -114,22 +136,15 @@
       // Only handle messages from our widget
       if (!data || data.source !== 'ozwell-chat-widget') return;
 
-      // Handle tool calls
+      // Handle tool calls using registry
       if (data.type === 'tool_call') {
         console.log('[app.js] Received tool call from widget:', data);
 
-        if (data.tool === 'update_name' && data.payload && data.payload.name) {
-          const newName = data.payload.name;
-          console.log('[app.js] Executing update_name tool:', newName);
-
-          // Update the input field
-          nameInput.value = newName;
-
-          // Trigger the input event to update dashboard and sync state
-          const inputEvent = new Event('input', { bubbles: true });
-          nameInput.dispatchEvent(inputEvent);
-
-          console.log('[app.js] Name updated successfully to:', newName);
+        const handler = toolHandlers[data.tool];
+        if (handler) {
+          handler(data.payload);
+        } else {
+          console.warn('[app.js] No handler registered for tool:', data.tool);
         }
       }
     });
