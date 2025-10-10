@@ -84,7 +84,7 @@ Name: ${state.formData.name}
 Address: ${state.formData.address}
 Zip Code: ${state.formData.zipCode}
 
-When the user asks about their name, address, or zip code, use this information to answer. Be concise and friendly.`;
+When the user asks questions about their name, address, or zip code, answer directly using the information above. Be concise and friendly.`;
   }
 
   // Build MCP tools from parent config (dynamic, not hardcoded)
@@ -103,7 +103,13 @@ When the user asks about their name, address, or zip code, use this information 
     // Add tool information to system prompt
     if (tools.length > 0 && state.formData) {
       const toolNames = tools.map(t => t.function.name).join(', ');
-      systemPrompt += `\n\nYou have access to the following tools: ${toolNames}. Use them when the user asks you to perform relevant actions.`;
+      systemPrompt += `\n\nYou have access to tools: ${toolNames}.
+
+IMPORTANT INSTRUCTIONS:
+- ONLY use tools when the user explicitly asks you to UPDATE, CHANGE, or MODIFY something (e.g., "change my name to X", "update my address to Y")
+- DO NOT use tools to answer questions - just respond with text using the context you already have
+- DO NOT use tools for general conversation
+- If the user asks "what's my name?" or "who are you?", just answer with text - do NOT call any tools`;
     }
 
     console.log('[widget.js] Tools loaded from config:', tools);
