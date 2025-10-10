@@ -13,6 +13,7 @@ const referenceBaseUrl = (process.env.REFERENCE_SERVER_URL || 'http://localhost:
 const publicDir = path.join(__dirname, 'public');
 const iframeSyncPath = path.join(__dirname, 'node_modules', 'iframe-sync', 'index.js');
 
+// Serve static assets from public directory
 app.use('/assets', express.static(publicDir));
 
 // Serve iframe-sync library
@@ -20,19 +21,32 @@ app.get('/assets/iframe-sync.js', (req, res) => {
   res.type('application/javascript').sendFile(iframeSyncPath);
 });
 
-function renderIndex() {
-  const filePath = path.join(publicDir, 'index.html');
+// Serve landing page assets
+app.get('/assets/landing-app.js', (req, res) => {
+  res.type('application/javascript').sendFile(path.join(publicDir, 'landing-app.js'));
+});
+
+app.get('/assets/landing.css', (req, res) => {
+  res.type('text/css').sendFile(path.join(publicDir, 'landing.css'));
+});
+
+function renderHtml(filename) {
+  const filePath = path.join(publicDir, filename);
   const html = fs.readFileSync(filePath, 'utf8');
   return html.replace(/__REFERENCE_BASE_URL__/g, referenceBaseUrl);
 }
 
 app.get('/', (req, res) => {
-  res.type('html').send(renderIndex());
+  res.type('html').send(renderHtml('index.html'));
+});
+
+app.get('/landing.html', (req, res) => {
+  res.type('html').send(renderHtml('landing.html'));
 });
 
 app.get('*', (req, res, next) => {
   if (req.path === '/' || req.path === '') {
-    return res.type('html').send(renderIndex());
+    return res.type('html').send(renderHtml('index.html'));
   }
   next();
 });

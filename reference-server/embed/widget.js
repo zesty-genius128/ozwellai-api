@@ -102,14 +102,17 @@ When the user asks questions about their name, address, or zip code, answer dire
 
     // Add tool information to system prompt
     if (tools.length > 0 && state.formData) {
-      const toolNames = tools.map(t => t.function.name).join(', ');
-      systemPrompt += `\n\nYou have access to tools: ${toolNames}.
+      systemPrompt += `\n\nYou have access to tools that can modify data. Each tool's description explains what it does.
 
-IMPORTANT INSTRUCTIONS:
-- ONLY use tools when the user explicitly asks you to UPDATE, CHANGE, or MODIFY something (e.g., "change my name to X", "update my address to Y")
-- DO NOT use tools to answer questions - just respond with text using the context you already have
-- DO NOT use tools for general conversation
-- If the user asks "what's my name?" or "who are you?", just answer with text - do NOT call any tools`;
+TOOL USAGE RULES:
+- Use tools ONLY when the user explicitly asks you to take an ACTION (update, change, modify, set, create, delete, submit, etc.)
+- For ALL other interactions (questions, greetings, general conversation), respond with plain text - DO NOT call any tools
+- When in doubt, respond with text instead of calling a tool
+- NEVER return raw JSON or explain tool calls in your response - just have a natural conversation
+
+The distinction:
+• "Tell me X" / "What is X" / "Show me X" = Respond with text (you already have the context)
+• "Change X to Y" / "Update X" / "Set X to Y" = Call the appropriate tool`;
     }
 
     console.log('[widget.js] Tools loaded from config:', tools);

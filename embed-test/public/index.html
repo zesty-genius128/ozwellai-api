@@ -175,13 +175,13 @@
       tools: [
         {
           name: 'update_name',
-          description: 'Update the user\'s name in the form',
+          description: 'Updates the user\'s name field to a new value. Use when user requests to change/update/modify their name.',
           parameters: {
             type: 'object',
             properties: {
               name: {
                 type: 'string',
-                description: 'The new name for the user'
+                description: 'The new name value'
               }
             },
             required: ['name']
